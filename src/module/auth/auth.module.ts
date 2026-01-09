@@ -7,11 +7,13 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { Token } from './entity/auth.entity';
 import { UsersModule } from '../user/user.module';
-
+import { MailModule } from '../mail/mail.module';
+import { PasswordResetOtp } from './entity/password-reset-otp.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Token]),
+    TypeOrmModule.forFeature([Token,PasswordResetOtp]),
     UsersModule,
+    MailModule,
     JwtModule.registerAsync({
       inject: [ConfigService], // Removed 'const'
       useFactory: (config: ConfigService) => ({

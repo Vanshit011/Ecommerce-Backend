@@ -1,13 +1,14 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
 export class ResetPasswordDto {
   @IsEmail()
   email: string;
 
   @IsString()
+  @IsNotEmpty()
   otp: string;
 
   @IsString()
-  @MinLength(6)
+  @Length(6, 32, { message: 'Password must be 6-32 characters' })
   newPassword: string;
 }

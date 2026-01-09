@@ -5,13 +5,11 @@ import { User } from './entity/user.entity';
 
 @Injectable()
 export class UsersService {
-  updatePassword(email: string, hashedPassword: any) {
-    throw new Error('Method not implemented.');
-  }
+
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-  ) {}
+  ) { }
 
   findByEmail(email: string) {
     return this.userRepo.findOne({ where: { email } });
@@ -24,4 +22,10 @@ export class UsersService {
   findById(id: string) {
     return this.userRepo.findOne({ where: { id } });
   }
+
+
+  save(user: User) {
+    return this.userRepo.save(user);
+  }
+
 }

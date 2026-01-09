@@ -5,8 +5,8 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
-@Entity('password_resets')
-export class PasswordReset {
+@Entity('password_reset_otp')
+export class PasswordResetOtp {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -16,7 +16,7 @@ export class PasswordReset {
   @Column()
   otp: string;
 
-  @Column()
+  @Column({ type: 'timestamp' })
   expiresAt: Date;
 
   @CreateDateColumn()
