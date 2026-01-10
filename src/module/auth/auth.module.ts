@@ -11,7 +11,7 @@ import { MailModule } from '../mail/mail.module';
 import { PasswordResetOtp } from './entity/password-reset-otp.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Token,PasswordResetOtp]),
+    TypeOrmModule.forFeature([Token, PasswordResetOtp]),
     UsersModule,
     MailModule,
     JwtModule.registerAsync({
