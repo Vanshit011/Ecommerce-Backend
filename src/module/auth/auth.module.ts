@@ -9,6 +9,7 @@ import { Token } from './entity/auth.entity';
 import { UsersModule } from '../user/user.module';
 import { MailModule } from '../mail/mail.module';
 import { PasswordResetOtp } from './entity/password-reset-otp.entity';
+import { TokenService } from './token.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Token, PasswordResetOtp]),
@@ -18,11 +19,11 @@ import { PasswordResetOtp } from './entity/password-reset-otp.entity';
       inject: [ConfigService], // Removed 'const'
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
+        expiresIn: config.get<string>('JWT_EXPIRES_IN') || '1d',
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, TokenService],
 })
-export class AuthModule {}
+export class AuthModule { }
