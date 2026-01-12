@@ -4,8 +4,8 @@ import {
   ManyToOne,
 } from 'typeorm';
 
-import { User } from 'src/module/user/entity/user.entity';
-import { BaseEntity } from 'src/shared/entities/base.entity';
+import { User } from '../../user/entity/user.entity';
+import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('tokens')
 export class Token extends BaseEntity {

@@ -1,9 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { AuthGuard } from 'src/core/guard/auth.guard';
+import { RolesGuard } from 'src/core/guard/roles.guard';
 
 
 @Controller('auth')
@@ -12,7 +14,7 @@ export class AuthController {
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password);
+    return this.authService.register(dto.email, dto.password, dto.mobile);
   }
 
   @Post('login')
@@ -22,11 +24,12 @@ export class AuthController {
 
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    await this.authService.sendForgotPasswordOtp(dto.email);
+    await this.authService.sendForgotPasswordOtp(dto);
     return {
-      message: 'OTP sent to your email',
-    };
+      message: 'OTP send successfully'
+    }
   }
+
 
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto) {
@@ -36,4 +39,25 @@ export class AuthController {
     };
   }
 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Post('logout')
+  async logout(@Req() req: any) {
+    if (!req.user) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const userId = req.user.id;
+    await this.authService.logout(userId);
+
+    return {
+      message: 'Logged out successfully',
+    };
+  }
+
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Get('dashboard')
+  getHello(): string {
+    return 'Hello World!';
+  }
 }

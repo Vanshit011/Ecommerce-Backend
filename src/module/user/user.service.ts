@@ -23,7 +23,11 @@ export class UsersService {
     return this.userRepo.findOne({ where: { id } });
   }
 
-
+  async findByMobile(mobile: string) {
+    return this.userRepo.findOne({
+      where: { mobile },
+    });
+  }
   save(user: User) {
     return this.userRepo.save(user);
   }
