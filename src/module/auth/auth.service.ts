@@ -14,6 +14,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { TokenService } from './token.service';
 import { OtpType } from 'src/shared/constants/enum';
 import { Token } from './entity/auth.entity';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+
+const STATIC_MOBILE_OTP = '123456';
 
 @Injectable()
 export class AuthService {
@@ -28,16 +31,21 @@ export class AuthService {
     private readonly tokenRepo: Repository<Token>
   ) { }
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string, mobile: string) {
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email already exists');
+    }
+
+    if (!mobile) {
+      throw new BadRequestException('Enter mobile number')
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.usersService.create({
       email,
+      mobile,
       password: hashedPassword,
     });
 
@@ -80,11 +88,29 @@ export class AuthService {
     await this.tokenRepo.save(token);
   }
 
-  async sendForgotPasswordOtp(email: string): Promise<void> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) throw new BadRequestException('User not found');
+  async sendForgotPasswordOtp(dto: ForgotPasswordDto): Promise<void> {
+    const { email, mobile } = dto;
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    if (!email && !mobile) {
+      throw new BadRequestException('Email or mobile is required');
+    }
+
+    let user;
+
+    if (email) {
+      user = await this.usersService.findByEmail(email);
+    } else if (mobile) {
+      user = await this.usersService.findByMobile(mobile);
+    }
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // OTP LOGIC
+    const otp = mobile
+      ? STATIC_MOBILE_OTP
+      : Math.floor(100000 + Math.random() * 900000).toString();
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
@@ -107,7 +133,6 @@ export class AuthService {
       );
     } else {
       await this.otpRepo.insert({
-        email,
         otp,
         expires_at: expiresAt,
         user: { id: user.id },
@@ -115,47 +140,43 @@ export class AuthService {
       });
     }
 
-    // 🔥 Send email async (DO NOT await)
-    this.mailService.sendOtpEmail(email, otp).catch(err => {
-      console.error('Email send failed:', err);
-    });
+    // 🔥 SEND OTP
+    if (email) {
+      this.mailService.sendOtpEmail(user.email, otp).catch(console.error);
+    } else {
+      console.log(`STATIC OTP ${otp} sent to mobile ${user.mobile}`);
+    }
   }
 
 
+
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const { email, otp, newPassword } = dto;
+    const { otp, newPassword } = dto;
 
     const otpRecord = await this.otpRepo.findOne({
       where: {
-        email,
+        otp: String(otp).trim(),
         type: OtpType.FORGOT_PASSWORD,
         is_verified: false,
       },
       relations: ['user'],
-      order: { created_at: 'DESC' }, //  latest OTP
+      order: { created_at: 'DESC' },
     });
 
     if (!otpRecord) {
-      throw new BadRequestException('OTP not found or already used');
+      throw new BadRequestException('Invalid or expired OTP');
     }
 
-    //  Normalize OTP comparison
-    if (otpRecord.otp !== String(otp).trim()) {
-      throw new BadRequestException('Invalid OTP');
-    }
-
-    //  Expiry check
     if (otpRecord.expires_at < new Date()) {
       throw new BadRequestException('OTP expired');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const user = otpRecord.user;
 
-    //  Update password
-    otpRecord.user.password = hashedPassword;
-    await this.usersService.save(otpRecord.user);
+    user.password = await bcrypt.hash(newPassword, 10);
+    await this.usersService.save(user);
 
-    // Mark OTP as verified
+    // mark OTP as used
     await this.otpRepo.update(
       { id: otpRecord.id },
       { is_verified: true },

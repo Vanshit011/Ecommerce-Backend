@@ -1,4 +1,4 @@
-import { UserRole } from 'src/module/user/entity/user.entity';
+import { UserRole } from '../../shared/constants/enum';
 
 export interface JwtPayload {
   sub: string;

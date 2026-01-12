@@ -1,14 +1,10 @@
-import { Entity, Column, ManyToOne, Index } from 'typeorm';
-import { BaseEntity } from 'src/shared/entities/base.entity';
-import { User } from 'src/module/user/entity/user.entity';
-import { OtpType } from 'src/shared/constants/enum';
+import { Entity, Column, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base.entity';
+import { User } from '../../../module/user/entity/user.entity';
+import { OtpType } from '../../../shared/constants/enum';
 
 @Entity('password_reset_otp')
 export class PasswordResetOtp extends BaseEntity {
-
-  @Index()
-  @Column()
-  email: string;
 
   @Column()
   otp: string;
@@ -22,7 +18,7 @@ export class PasswordResetOtp extends BaseEntity {
 
   @Column({
     type: 'boolean',
-    default: true,
+    default: false,
   })
   is_verified: boolean;
 

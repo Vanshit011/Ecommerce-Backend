@@ -3,10 +3,10 @@ import {
   OneToMany,
   Entity,
 } from 'typeorm';
-import { Token } from 'src/module/auth/entity/auth.entity';
-import { PasswordResetOtp } from 'src/module/auth/entity/password-reset-otp.entity';
-import { BaseEntity } from 'src/shared/entities/base.entity';
-import { UserRole } from 'src/shared/constants/enum';
+import { Token } from '../../../module/auth/entity/auth.entity';
+import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
+import { BaseEntity } from '../../../shared/entities/base.entity';
+import { UserRole } from '../../../shared/constants/enum';
 
 
 @Entity('users')
@@ -16,6 +16,9 @@ export class User extends BaseEntity {
 
   @Column()
   password: string;
+
+  @Column({ unique: true, nullable: true })
+  mobile: string;
 
   @Column({
     type: 'enum',
