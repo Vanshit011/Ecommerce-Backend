@@ -4,9 +4,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { AuthGuard } from 'src/core/guard/auth.guard';
-import { RolesGuard } from 'src/core/guard/roles.guard';
-
+import { AuthGuard } from '../../core/guard/auth.guard';
+import { RolesGuard } from '../../core/guard/roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -52,12 +51,5 @@ export class AuthController {
     return {
       message: 'Logged out successfully',
     };
-  }
-
-
-  @UseGuards(AuthGuard, RolesGuard)
-  @Get('dashboard')
-  getHello(): string {
-    return 'Hello World!';
   }
 }

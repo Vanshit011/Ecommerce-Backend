@@ -7,6 +7,7 @@ import { Token } from '../../../module/auth/entity/auth.entity';
 import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { UserRole } from '../../../shared/constants/enum';
+import { Product } from '../../../module/product/entity/product.entity';
 
 
 @Entity('users')
@@ -32,6 +33,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => PasswordResetOtp, (passwordResetOtp) => passwordResetOtp.user)
   PasswordResetOtps: PasswordResetOtp[];
+
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
 }
 export { UserRole };
 
