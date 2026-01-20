@@ -14,7 +14,7 @@ export class TokenService {
         private readonly tokenRepo: Repository<Token>,
     ) { }
 
-    async generate(userId: string, role: UserRole = UserRole.USER) {
+    async generate(userId: string, role: UserRole) {
         const now = new Date();
 
         const newExpiresAt = new Date();
@@ -43,7 +43,7 @@ export class TokenService {
         }
 
         // Token expired OR not exists  generate new token
-        const payload: JwtPayload = { sub: userId, role };
+        const payload: JwtPayload = { sub: userId, role: role, };
         const newToken = this.jwtService.sign(payload);
 
         if (existingToken) {

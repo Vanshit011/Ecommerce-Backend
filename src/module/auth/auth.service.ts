@@ -73,6 +73,11 @@ export class AuthService {
 
     return {
       success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
       ...(await this.tokenService.generate(user.id, user.role)),
     };
   }
