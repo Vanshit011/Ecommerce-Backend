@@ -6,7 +6,6 @@ import {
     UseInterceptors,
     UploadedFile,
     Body,
-    Req,
     Put,
     Param,
     Delete,
@@ -19,6 +18,7 @@ import { RolesGuard } from '../../core/guard/roles.guard';
 import { Roles } from '../../core/decorator/roles.decorator';
 import { UserRole } from '../../shared/constants/enum';
 import { cloudinaryStorage } from '../../core/utils/cloudinary-storage';
+import { GetUser } from '../../core/decorator/get-user.decorator';
 
 @Controller('products')
 export class ProductController {
@@ -36,22 +36,19 @@ export class ProductController {
     create(
         @Body() dto: CreateProductDto,
         @UploadedFile() file: Express.Multer.File,
-        @Req() req: any,
+        @GetUser('id') userId: string
     ) {
-        const userId = req.user.id || req.user.sub;
-
         const imageUrl = file.path;
         const publicId = file.filename;
 
         return this.productService.create(dto, imageUrl, publicId, userId);
     }
-    
+
     //admin product
     @Get('/my-products')
     @UseGuards(AuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    findMyProducts(@Req() req: any) {
-        const userId = req.user.id || req.user.sub;
+    findMyProducts(@GetUser('id') userId: string) {
         return this.productService.findAllForAdmin(userId);
     }
 
@@ -70,9 +67,8 @@ export class ProductController {
         @Param('id') id: string,
         @Body() dto: Partial<CreateProductDto>,
         @UploadedFile() file: Express.Multer.File,
-        @Req() req: any,
+        @GetUser('id') userId: string
     ) {
-        const userId = req.user.id || req.user.sub;
         return this.productService.update(id, dto, userId, file);
     }
 
@@ -80,8 +76,7 @@ export class ProductController {
     @Delete(':id')
     @UseGuards(AuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    remove(@Param('id') id: string, @Req() req: any) {
-        const userId = req.user.id || req.user.sub;
+    remove(@Param('id') id: string, @GetUser('id') userId: string) {
         return this.productService.delete(id, userId);
     }
 
