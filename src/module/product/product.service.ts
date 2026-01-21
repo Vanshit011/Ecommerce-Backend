@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Product } from '../product/entity/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { deleteImage, uploadImage } from '../../core/utils/cloudinary.helper';
-
+import { Category } from '../categories/entity/category.entity';
 @Injectable()
 export class ProductService {
   constructor(
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
+    @InjectRepository(Category)
+    private readonly category: Repository<Category>
   ) { }
 
   async create(
@@ -30,6 +32,7 @@ export class ProductService {
   findAllForUsers() {
     return this.productRepo.find({
       where: { isActive: true },
+      relations: ['category'],
     });
   }
 
@@ -37,6 +40,7 @@ export class ProductService {
   findAllForAdmin(userId: string) {
     return this.productRepo.find({
       where: { isActive: true, userId },
+      relations: ['category']
     });
   }
 
