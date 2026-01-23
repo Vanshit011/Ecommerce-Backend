@@ -19,7 +19,8 @@ import { Roles } from '../../core/decorator/roles.decorator';
 import { UserRole } from '../../shared/constants/enum';
 import { cloudinaryStorage } from '../../core/utils/cloudinary-storage';
 import { GetUser } from '../../core/decorator/get-user.decorator';
-
+import { ProductQuery } from 'src/core/decorator/product-query.decorator';
+import type { ProductQueryParams } from '../../shared/constants/types';
 @Controller('products')
 export class ProductController {
     constructor(private productService: ProductService) { }
@@ -52,11 +53,12 @@ export class ProductController {
         return this.productService.findAllForAdmin(userId);
     }
 
-    //user 
+    //user Prodcuts with pagination
     @Get()
-    findAll() {
-        return this.productService.findAllForUsers();
+    findAll(@ProductQuery() query: ProductQueryParams) {
+        return this.productService.findAllForUsers(query);
     }
+
 
     //update product admin only
     @Put(':id')

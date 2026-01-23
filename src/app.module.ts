@@ -7,6 +7,7 @@ import { AuthModule } from './module/auth/auth.module';
 import { MailModule } from './module/mail/mail.module';
 import { ProductModule } from './module/product/product.module';
 import { CategoriesModule } from './module/categories/categories.module';
+import { FavoriteModule } from './module/favorite/favorite.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { CategoriesModule } from './module/categories/categories.module';
     AuthModule,
     MailModule,
     ProductModule,
-    CategoriesModule
+    CategoriesModule,
+    FavoriteModule
   ],
 })
 export class AppModule { }

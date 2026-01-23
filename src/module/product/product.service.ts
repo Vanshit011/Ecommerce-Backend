@@ -5,6 +5,7 @@ import { Product } from '../product/entity/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { deleteImage, uploadImage } from '../../core/utils/cloudinary.helper';
 import { Category } from '../categories/entity/category.entity';
+import type { ProductQueryParams } from '../../shared/constants/types';
 @Injectable()
 export class ProductService {
   constructor(
@@ -29,11 +30,73 @@ export class ProductService {
   }
 
   // USER see all products
-  findAllForUsers() {
-    return this.productRepo.find({
-      where: { isActive: true },
-      relations: ['category'],
-    });
+  async findAllForUsers(query: ProductQueryParams) {
+    const { page, limit, skip, search, categories } = query;
+
+    const qb = this.productRepo
+      .createQueryBuilder('products')
+      .leftJoinAndSelect('products.category', 'category')
+      .where('products.isActive = :active', { active: true });
+
+    if (search) {
+      qb.andWhere(
+        '(LOWER(products.name) LIKE :search OR LOWER(products.description) LIKE :search OR LOWER(category.name) LIKE :search)',
+        {
+          search: `%${search.toLowerCase()}%`,
+        },
+      );
+    }
+
+    // Category filter
+    if (categories?.length) {
+      qb.andWhere(
+        'LOWER(category.name) IN (:...categories)',
+        {
+          categories: categories.map((c) => c.toLowerCase()),
+        },
+      );
+    }
+
+    //min price filter
+    if (query.minPrice !== undefined) {
+      qb.andWhere('products.price >= :minPrice', {
+        minPrice: query.minPrice,
+      });
+    }
+    //max price filter
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('products.price <= :maxPrice', {
+        maxPrice: query.maxPrice,
+      });
+    }
+
+    // Sorting
+    if (query.sort === 'price_asc') {
+      qb.orderBy('products.price', 'ASC');
+    } else if (query.sort === 'price_desc') {
+      qb.orderBy('products.price', 'DESC');
+    } else {
+      qb.orderBy('products.created_at', 'DESC');
+    }
+
+    const [data, total] = await qb
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        categories: categories || [],
+        minPrice: query.minPrice,
+        maxPrice: query.maxPrice,
+        sort: query.sort || null,
+      },
+    };
   }
 
   // ADMIN see only own products

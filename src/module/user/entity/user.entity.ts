@@ -8,7 +8,7 @@ import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { UserRole } from '../../../shared/constants/enum';
 import { Product } from '../../../module/product/entity/product.entity';
-
+import { Favorite } from '../../../module/favorite/entity/favorite.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -36,6 +36,10 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Product, (product) => product.user)
   products: Product[];
+
+  @OneToMany(() => Favorite, (favorite) => favorite.user)
+  favorites: Favorite[];
+
 }
 export { UserRole };
 
