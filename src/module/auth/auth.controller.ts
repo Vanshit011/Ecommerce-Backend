@@ -6,6 +6,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
+import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +28,15 @@ export class AuthController {
     return {
       message: 'OTP send successfully'
     }
+  }
+
+  @Post('verify-forgot-otp')
+  async verifyForgotOtp(@Body() dto: VerifyForgotOtpDto) {
+    await this.authService.verifyForgotPasswordOtp(dto);
+
+    return {
+      message: 'OTP verified successfully',
+    };
   }
 
 

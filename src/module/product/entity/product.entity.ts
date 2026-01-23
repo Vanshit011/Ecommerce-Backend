@@ -1,8 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../../module/user/entity/user.entity';
 import { Category } from '../../categories/entity/category.entity';
-
+import { Favorite } from '../../favorite/entity/favorite.entity';
 @Entity('products')
 export class Product extends BaseEntity {
 
@@ -37,4 +37,7 @@ export class Product extends BaseEntity {
 
   @Column()
   userId: string;
+
+  @OneToMany(() => Favorite, (favorite) => favorite.product)
+  favorites: Favorite[];
 }

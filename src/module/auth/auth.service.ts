@@ -15,6 +15,7 @@ import { TokenService } from './token.service';
 import { OtpType } from 'src/shared/constants/enum';
 import { Token } from './entity/auth.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 
 const STATIC_MOBILE_OTP = '123456';
 
@@ -153,10 +154,8 @@ export class AuthService {
     }
   }
 
-
-
-  async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const { otp, newPassword } = dto;
+  async verifyForgotPasswordOtp(dto: VerifyForgotOtpDto): Promise<void> {
+    const { otp } = dto;
 
     const otpRecord = await this.otpRepo.findOne({
       where: {
@@ -176,16 +175,43 @@ export class AuthService {
       throw new BadRequestException('OTP expired');
     }
 
-    const user = otpRecord.user;
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await this.usersService.save(user);
-
-    // mark OTP as used
+    // ✅ mark OTP verified
     await this.otpRepo.update(
       { id: otpRecord.id },
       { is_verified: true },
     );
   }
+
+
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const { newPassword } = dto;
+
+    const otpRecord = await this.otpRepo.findOne({
+      where: {
+        type: OtpType.FORGOT_PASSWORD,
+        is_verified: true,
+      },
+      relations: ['user'],
+      order: { created_at: 'DESC' },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException(
+        'OTP verification required before resetting password',
+      );
+    }
+
+    // Optional: check OTP still fresh window (extra safety)
+    if (otpRecord.expires_at < new Date()) {
+      throw new BadRequestException('OTP expired');
+    }
+
+    const user = otpRecord.user;
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await this.usersService.save(user);
+  }
+
 
 }

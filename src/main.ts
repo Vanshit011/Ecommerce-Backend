@@ -5,10 +5,21 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.ECOMMERCE_FRONTEND, 
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://192.168.5.47:5173',
+      ];
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS blocked'));
+      }
+    },
     credentials: true,
   });
 
-  await app.listen(3000);
+  await app.listen(process.env.PORT || 3000); 
 }
 bootstrap();
