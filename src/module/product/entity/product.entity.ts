@@ -3,9 +3,9 @@ import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../../module/user/entity/user.entity';
 import { Category } from '../../categories/entity/category.entity';
 import { Favorite } from '../../favorite/entity/favorite.entity';
+import { CartItem } from '../../cart/entity/cart.entity';
 @Entity('products')
 export class Product extends BaseEntity {
-
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
@@ -24,12 +24,12 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @ManyToOne(() => Category, category => category.products)
-  @JoinColumn({ name: 'categoryId' }) 
+  @ManyToOne(() => Category, (category) => category.products)
+  @JoinColumn({ name: 'categoryId' })
   category: Category;
 
   @Column({ nullable: true })
-  categoryId: string; 
+  categoryId: string;
 
   @ManyToOne(() => User, (user) => user.products, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
@@ -40,4 +40,7 @@ export class Product extends BaseEntity {
 
   @OneToMany(() => Favorite, (favorite) => favorite.product)
   favorites: Favorite[];
+
+  @OneToMany(() => CartItem, (cartItem) => cartItem.product)
+  cartItems: CartItem[];
 }
