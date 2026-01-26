@@ -12,14 +12,14 @@ export class ProductService {
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
     @InjectRepository(Category)
-    private readonly category: Repository<Category>
-  ) { }
+    private readonly category: Repository<Category>,
+  ) {}
 
   async create(
     dto: CreateProductDto,
     imageUrl: string,
     publicId: string,
-    userId: string
+    userId: string,
   ) {
     return this.productRepo.save({
       ...dto,
@@ -49,12 +49,9 @@ export class ProductService {
 
     // Category filter
     if (categories?.length) {
-      qb.andWhere(
-        'LOWER(category.name) IN (:...categories)',
-        {
-          categories: categories.map((c) => c.toLowerCase()),
-        },
-      );
+      qb.andWhere('LOWER(category.name) IN (:...categories)', {
+        categories: categories.map((c) => c.toLowerCase()),
+      });
     }
 
     //min price filter
@@ -79,10 +76,7 @@ export class ProductService {
       qb.orderBy('products.created_at', 'DESC');
     }
 
-    const [data, total] = await qb
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
 
     return {
       data,
@@ -103,11 +97,11 @@ export class ProductService {
   findAllForAdmin(userId: string) {
     return this.productRepo.find({
       where: { isActive: true, userId },
-      relations: ['category']
+      relations: ['category'],
     });
   }
 
-
+  // admin update own product
   async update(
     id: string,
     dto: Partial<CreateProductDto>,
@@ -136,8 +130,7 @@ export class ProductService {
     return this.productRepo.save(product);
   }
 
-
-
+  // admin delete own product (soft delete)
   async delete(id: string, userId: string) {
     const product = await this.productRepo.findOne({
       where: { id, userId },
@@ -154,6 +147,12 @@ export class ProductService {
     };
   }
 
-
-
+  //product details for users
+  async getProductDetails(id: string) {
+    const product = await this.productRepo.findOne({
+      where: { id, isActive: true },
+      relations: ['category'],
+    });
+    return product;
+  }
 }

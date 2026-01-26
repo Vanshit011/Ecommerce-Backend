@@ -8,7 +8,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       const allowedOrigins = [
         'http://localhost:5173',
-        'http://192.168.5.47:5173',
+        'http://192.168.5.42:5173',
       ];
 
       if (!origin || allowedOrigins.includes(origin)) {
@@ -20,6 +20,6 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(process.env.PORT || 3000); 
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

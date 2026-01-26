@@ -1,14 +1,11 @@
-import {
-  Column,
-  OneToMany,
-  Entity,
-} from 'typeorm';
+import { Column, OneToMany, Entity } from 'typeorm';
 import { Token } from '../../../module/auth/entity/auth.entity';
 import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { UserRole } from '../../../shared/constants/enum';
 import { Product } from '../../../module/product/entity/product.entity';
 import { Favorite } from '../../../module/favorite/entity/favorite.entity';
+import { CartItem } from '../../../module/cart/entity/cart.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -31,7 +28,10 @@ export class User extends BaseEntity {
   @OneToMany(() => Token, (token) => token.user)
   tokens: Token[];
 
-  @OneToMany(() => PasswordResetOtp, (passwordResetOtp) => passwordResetOtp.user)
+  @OneToMany(
+    () => PasswordResetOtp,
+    (passwordResetOtp) => passwordResetOtp.user,
+  )
   PasswordResetOtps: PasswordResetOtp[];
 
   @OneToMany(() => Product, (product) => product.user)
@@ -40,6 +40,7 @@ export class User extends BaseEntity {
   @OneToMany(() => Favorite, (favorite) => favorite.user)
   favorites: Favorite[];
 
+  @OneToMany(() => CartItem, (cartItem) => cartItem.user)
+  cartItems: CartItem[];
 }
 export { UserRole };
-

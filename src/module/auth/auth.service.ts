@@ -29,17 +29,23 @@ export class AuthService {
     @InjectRepository(PasswordResetOtp)
     private readonly otpRepo: Repository<PasswordResetOtp>,
     @InjectRepository(Token)
-    private readonly tokenRepo: Repository<Token>
-  ) { }
+    private readonly tokenRepo: Repository<Token>,
+  ) {}
 
   async register(email: string, password: string, mobile: string) {
     const existingUser = await this.usersService.findByEmail(email);
+    const existingMobileUser = await this.usersService.findByMobile(mobile);
+
+    if (existingMobileUser) {
+      throw new BadRequestException('Mobile number already exists');
+    }
+
     if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
 
     if (!mobile) {
-      throw new BadRequestException('Enter mobile number')
+      throw new BadRequestException('Enter mobile number');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -50,11 +56,12 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    this.mailService.sendWelcomeEmail(user.email, user.email).catch(console.error);
+    this.mailService
+      .sendWelcomeEmail(user.email, user.email)
+      .catch(console.error);
 
     return { success: true };
   }
-
 
   async login(email: string, password: string) {
     if (!email || !password) {
@@ -78,6 +85,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        mobile: user.mobile || null,
       },
       ...(await this.tokenService.generate(user.id, user.role)),
     };
@@ -146,7 +154,7 @@ export class AuthService {
       });
     }
 
-    // 🔥 SEND OTP
+    //  SEND OTP
     if (email) {
       this.mailService.sendOtpEmail(user.email, otp).catch(console.error);
     } else {
@@ -176,13 +184,8 @@ export class AuthService {
     }
 
     // ✅ mark OTP verified
-    await this.otpRepo.update(
-      { id: otpRecord.id },
-      { is_verified: true },
-    );
+    await this.otpRepo.update({ id: otpRecord.id }, { is_verified: true });
   }
-
-
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
     const { newPassword } = dto;
@@ -212,6 +215,4 @@ export class AuthService {
     user.password = await bcrypt.hash(newPassword, 10);
     await this.usersService.save(user);
   }
-
-
 }

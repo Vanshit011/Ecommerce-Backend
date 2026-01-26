@@ -8,7 +8,8 @@ import { MailModule } from './module/mail/mail.module';
 import { ProductModule } from './module/product/product.module';
 import { CategoriesModule } from './module/categories/categories.module';
 import { FavoriteModule } from './module/favorite/favorite.module';
-
+import { ProfileModule } from './module/profile/profile.module';
+import { CartModule } from './module/cart/cart.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -21,7 +22,9 @@ import { FavoriteModule } from './module/favorite/favorite.module';
     MailModule,
     ProductModule,
     CategoriesModule,
-    FavoriteModule
+    FavoriteModule,
+    ProfileModule,
+    CartModule,
   ],
 })
 export class AppModule { }
