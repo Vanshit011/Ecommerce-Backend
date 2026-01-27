@@ -6,6 +6,8 @@ import { UserRole } from '../../../shared/constants/enum';
 import { Product } from '../../../module/product/entity/product.entity';
 import { Favorite } from '../../../module/favorite/entity/favorite.entity';
 import { CartItem } from '../../../module/cart/entity/cart.entity';
+import { Address } from '../../address/entity/address.entity';
+import { Order } from '../../order/entity/order.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -42,5 +44,11 @@ export class User extends BaseEntity {
 
   @OneToMany(() => CartItem, (cartItem) => cartItem.user)
   cartItems: CartItem[];
+
+  @OneToMany(() => Address, (address) => address.user)
+  address: Address[];
+
+  @OneToMany(() => Order, (order) => order.user)
+  order: Order[];
 }
 export { UserRole };
