@@ -10,8 +10,14 @@ import { CategoriesModule } from './module/categories/categories.module';
 import { FavoriteModule } from './module/favorite/favorite.module';
 import { ProfileModule } from './module/profile/profile.module';
 import { CartModule } from './module/cart/cart.module';
+import { AddressModule } from './module/address/address.module';
+import { StripeModule } from './core/stripe/stripe.module';
+import { OrderModule } from './module/order/order.module';
+import { WebhookModule } from './module/webhook/webhook.module';
 @Module({
   imports: [
+    StripeModule,
+    WebhookModule,
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -25,6 +31,8 @@ import { CartModule } from './module/cart/cart.module';
     FavoriteModule,
     ProfileModule,
     CartModule,
+    AddressModule,
+    OrderModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -5,11 +5,10 @@ import { User } from './entity/user.entity';
 
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-  ) { }
+  ) {}
 
   findByEmail(email: string) {
     return this.userRepo.findOne({ where: { email } });
@@ -31,5 +30,4 @@ export class UsersService {
   save(user: User) {
     return this.userRepo.save(user);
   }
-
 }
