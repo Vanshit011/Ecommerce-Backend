@@ -35,18 +35,29 @@ export class WebhookController {
 
     switch (event.type) {
       case 'payment_intent.succeeded':
-        console.log('✅ PAYMENT SUCCEEDED:', intent.id);
-        await this.orderService.handlePaymentSuccess(intent.id);
-        break;
+      case 'charge.succeeded': {
+        const obj: any = event.data.object;
 
-      case 'payment_intent.payment_failed':
+        const orderId =
+          obj.metadata?.orderId || obj.payment_intent?.metadata?.orderId;
+
+        console.log('🎯 ORDER ID FROM STRIPE:', orderId);
+
+        if (!orderId) {
+          console.log('❌ NO ORDER ID FOUND IN STRIPE METADATA');
+          break;
+        }
+
+        await this.orderService.markPaidByOrderId(orderId);
+        break;
+      }
+
+      case 'payment_intent.payment_failed': {
         console.log('❌ PAYMENT FAILED:', intent.id);
+
         await this.orderService.handlePaymentFailed(intent.id);
         break;
-
-      case 'payment_intent.created':
-        console.log('ℹ️ PAYMENT INTENT CREATED:', intent.id);
-        break;
+      }
 
       default:
         console.log('⚠️ UNHANDLED EVENT TYPE:', event.type);

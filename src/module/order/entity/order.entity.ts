@@ -1,8 +1,9 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { OrderStatus } from '../../../shared/constants/enum';
 import { User } from '../../user/entity/user.entity';
 import { Address } from '../../address/entity/address.entity';
+import { OrderItem } from './order-item.entity';
 
 @Entity('orders')
 export class Order extends BaseEntity {
@@ -17,6 +18,9 @@ export class Order extends BaseEntity {
   address: Address;
   @Column({ name: 'address_id', type: 'uuid' })
   addressId: string;
+
+  @OneToMany(() => OrderItem, (item) => item.order)
+  items: OrderItem[];
 
   @Column('decimal', { precision: 10, scale: 2 })
   totalAmount: number;

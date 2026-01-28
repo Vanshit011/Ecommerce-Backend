@@ -63,9 +63,45 @@ export class AuthService {
     return { success: true };
   }
 
-  async login(email: string, password: string) {
+  async login(
+    email?: string,
+    password?: string,
+    mobile?: string,
+    otp?: string,
+  ) {
+    //  LOGIN WITH MOBILE + OTP
+    if (email && otp) {
+      throw new UnauthorizedException(
+        'Use either email/password or mobile/otp',
+      );
+    }
+
+    if (mobile && otp) {
+      if (otp !== '123456') {
+        throw new UnauthorizedException('Invalid OTP');
+      }
+
+      const user = await this.usersService.findByMobile(mobile);
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          mobile: user.mobile || null,
+        },
+        ...(await this.tokenService.generate(user.id, user.role)),
+      };
+    }
+
+    // LOGIN WITH EMAIL + PASSWORD
     if (!email || !password) {
-      throw new UnauthorizedException('Email and password required');
+      throw new UnauthorizedException('Email/password or mobile/otp required');
     }
 
     const user = await this.usersService.findByEmail(email);
@@ -75,6 +111,7 @@ export class AuthService {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }
