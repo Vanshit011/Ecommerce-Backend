@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from './entity/address.entity';
@@ -50,31 +54,58 @@ export class AddressService {
     return address;
   }
 
-  async setDefault(id: string, userId: string) {
-    // check address to user
-    const address = await this.repo.findOne({
-      where: { id, user: { id: userId } },
+  async getAll(userId: string) {
+    return this.repo.find({
+      where: {
+        user: { id: userId },
+      },
+      order: {
+        isdefault: 'DESC',
+        created_at: 'DESC',
+      },
     });
+  }
 
-    if (!address) {
-      throw new NotFoundException('Address not found');
-    }
-    //if alreday true return
-    if (address.isdefault === true) {
-      throw new NotFoundException('Address is already default address');
-    }
-    // remove existing default
-    await this.repo
-      .createQueryBuilder()
-      .update(Address)
-      .set({ isdefault: false })
-      .where('user_id = :userId', { userId })
-      .andWhere('isdefault = true')
-      .execute();
+  async setDefault(id: string, userId: string) {
+    return this.repo.manager.transaction(async (manager) => {
+      console.log('PARAM id:', id);
+      console.log('PARAM userId:', userId);
 
-    // set new default
-    address.isdefault = true;
-    return this.repo.save(address);
+      const all = await manager
+        .createQueryBuilder(Address, 'address')
+        .getMany();
+
+      console.log('ALL ADDRESSES FROM ORM:', all);
+
+      const address = await manager
+        .createQueryBuilder(Address, 'address')
+        .where('address.id = :id', { id })
+        .andWhere('address.userId = :userId', { userId })
+        .getOne();
+
+      if (!address) {
+        throw new NotFoundException('Address not found');
+      }
+
+      // reset all
+      await manager
+        .createQueryBuilder()
+        .update(Address)
+        .set({ isdefault: false })
+        .where('"userId" = :userId', { userId })
+        .execute();
+
+      // set selected
+      await manager
+        .createQueryBuilder()
+        .update(Address)
+        .set({ isdefault: true })
+        .where('id = :id', { id })
+        .andWhere('"userId" = :userId', { userId })
+        .execute();
+
+      return { message: 'Default address updated successfully' };
+    });
   }
 
   async update(id: string, userId: string, dto: UpdateAddressDto) {

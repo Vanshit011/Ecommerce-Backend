@@ -114,6 +114,37 @@ export class OrderService {
     };
   }
 
+  async getUserOrders(userId: string) {
+  return this.orderRepo.find({
+    where: { userId },
+    relations: [
+      'items',
+      'items.product',
+      'address',
+    ],
+    order: {
+      created_at: 'DESC',
+    },
+  });
+}
+
+
+  async getOrderById(orderId: string, userId: string) {
+    const order = await this.orderRepo.findOne({
+      where: {
+        id: orderId,
+        user: { id: userId },
+      },
+      relations: ['address', 'user'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
   async handlePaymentSuccess(paymentIntentId: string) {
     console.log('HANDLE PAYMENT SUCCESS:', paymentIntentId);
 
@@ -142,19 +173,16 @@ export class OrderService {
     await this.orderRepo.save(order);
   }
 
-  async getOrderById(orderId: string, userId: string) {
+  async markPaidByOrderId(orderId: string) {
     const order = await this.orderRepo.findOne({
-      where: {
-        id: orderId,
-        user: { id: userId },
-      },
-      relations: ['address','user'],
+      where: { id: orderId },
     });
 
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
+    if (!order) return;
 
-    return order;
+    order.status = OrderStatus.PAID;
+    await this.orderRepo.save(order);
+
+    await this.cartService.clearCart(order.userId);
   }
 }

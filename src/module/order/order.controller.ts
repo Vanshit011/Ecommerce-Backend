@@ -10,6 +10,20 @@ import { UserRole } from '../../shared/constants/enum';
 export class OrderController {
   constructor(private orderService: OrderService) {}
 
+  @Get('my')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  getMyOrders(@GetUser('id') userId: string) {
+    return this.orderService.getUserOrders(userId);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  getOne(@Param('id') id: string, @GetUser('id') userId: string) {
+    return this.orderService.getOrderById(id, userId);
+  }
+
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
@@ -20,12 +34,5 @@ export class OrderController {
   @Post(':id/pay')
   pay(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.orderService.payOrder(id, userId);
-  }
-
-  @Get(':id')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  getOne(@Param('id') id: string, @GetUser('id') userId: string) {
-    return this.orderService.getOrderById(id, userId);
   }
 }

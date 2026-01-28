@@ -21,6 +21,7 @@ import { cloudinaryStorage } from '../../core/utils/cloudinary-storage';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { ProductQuery } from 'src/core/decorator/product-query.decorator';
 import type { ProductQueryParams } from '../../shared/constants/types';
+
 @Controller('products')
 export class ProductController {
   constructor(private productService: ProductService) {}
@@ -32,9 +33,12 @@ export class ProductController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: cloudinaryStorage,
+      limits: {
+        fileSize: 2 * 1024 * 1024, // 2MB
+      },
     }),
   )
-  create(
+  async create(
     @Body() dto: CreateProductDto,
     @UploadedFile() file: Express.Multer.File,
     @GetUser('id') userId: string,

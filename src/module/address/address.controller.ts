@@ -30,14 +30,15 @@ export class AddressController {
   }
 
   // GET one
-  @Get(':id')
+  @Get()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  getOne(@Param('id') id: string, @GetUser('id') userId: string) {
-    return this.addressService.getOne(id, userId);
+  getAll(@GetUser('id') userId: string) {
+    return this.addressService.getAll(userId);
   }
 
   @Put(':id/default')
+  @UseGuards(AuthGuard, RolesGuard)
   setDefault(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.addressService.setDefault(id, userId);
   }

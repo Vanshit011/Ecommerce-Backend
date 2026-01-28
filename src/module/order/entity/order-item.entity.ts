@@ -5,7 +5,9 @@ import { Product } from '../../product/entity/product.entity';
 
 @Entity('order_items')
 export class OrderItem extends BaseEntity {
-  @ManyToOne(() => Order, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Order, (order) => order.items, {
+    onDelete: 'CASCADE',
+  })
   order: Order;
 
   @ManyToOne(() => Product)
