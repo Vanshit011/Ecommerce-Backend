@@ -7,8 +7,11 @@ export enum OtpType {
   FORGOT_PASSWORD = 'forgot_password',
 }
 
-export enum OrderStatus {
-  PENDING = 'PENDING',
-  PAID = 'PAID',
-  FAILED = 'FAILED',
+export enum Status {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  SHIPPED = 'shipped',
+  DELIVERED = 'delivered',
+  CANCELLED = 'cancelled',
+  FAILED = 'failed',
 }

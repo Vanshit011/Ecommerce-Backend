@@ -14,10 +14,12 @@ import { AddressModule } from './module/address/address.module';
 import { StripeModule } from './core/stripe/stripe.module';
 import { OrderModule } from './module/order/order.module';
 import { WebhookModule } from './module/webhook/webhook.module';
+import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
     StripeModule,
     WebhookModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

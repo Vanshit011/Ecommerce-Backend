@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
-import { OrderStatus } from '../../../shared/constants/enum';
+import { Status } from '../../../shared/constants/enum';
 import { User } from '../../user/entity/user.entity';
 import { Address } from '../../address/entity/address.entity';
 import { OrderItem } from './order-item.entity';
@@ -27,10 +27,10 @@ export class Order extends BaseEntity {
 
   @Column({
     type: 'enum',
-    enum: OrderStatus,
-    default: OrderStatus.PENDING,
+    enum: Status,
+    default: Status.PENDING,
   })
-  status: OrderStatus;
+  status: Status;
 
   @Column({ nullable: true })
   stripePaymentIntentId: string;
