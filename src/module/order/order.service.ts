@@ -1,14 +1,16 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
 import { Order } from './entity/order.entity';
 import { OrderItem } from './entity/order-item.entity';
-import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service';
-import { OrderStatus } from '../../shared/constants/enum';
+import { Status } from '../../shared/constants/enum';
 import { Address } from '../address/entity/address.entity';
 import { StripeService } from './../../core/stripe/stripe.service';
 
@@ -29,15 +31,14 @@ export class OrderService {
     private stripeService: StripeService,
   ) {}
 
+  // CREATE ORDER FROM CART
   async createFromCart(userId: string) {
-    // Get cart
     const cart = await this.cartService.getMyCart(userId);
 
     if (!cart.items.length) {
       throw new NotFoundException('Cart is empty');
     }
 
-    //  Get default address
     const address = await this.addressRepo.findOne({
       where: {
         user: { id: userId },
@@ -49,25 +50,21 @@ export class OrderService {
       throw new NotFoundException('No default address found');
     }
 
-    // Calculate total
     let total = 0;
-
     for (const item of cart.items) {
       total += Number(item.product.price) * item.quantity;
     }
 
-    //  Create order
     const order = await this.orderRepo.save({
       userId,
       addressId: address.id,
       totalAmount: total,
-      status: OrderStatus.PENDING,
+      status: Status.PENDING,
     });
 
-    // Create order items
     const orderItems = cart.items.map((item) =>
       this.orderItemRepo.create({
-        order: order,
+        order,
         product: item.product,
         price: item.product.price,
         quantity: item.quantity,
@@ -79,6 +76,7 @@ export class OrderService {
     return order;
   }
 
+  // PAY ORDER (STRIPE INTENT)
   async payOrder(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId, userId },
@@ -88,23 +86,26 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('Order already paid or cancelled');
+    // already paid
+    if (order.status !== Status.PENDING) {
+      throw new BadRequestException('Order cannot be paid');
     }
 
-    // create stripe payment intent
     const stripe = this.stripeService.getClient();
 
+    //  Always create NEW intent if old one exists
     const intent = await stripe.paymentIntents.create({
       amount: Math.round(Number(order.totalAmount) * 100),
       currency: 'inr',
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         orderId: order.id,
         userId,
       },
     });
 
-    // save intent id
     order.stripePaymentIntentId = intent.id;
     await this.orderRepo.save(order);
 
@@ -114,21 +115,18 @@ export class OrderService {
     };
   }
 
+  // USER ORDERS
   async getUserOrders(userId: string) {
-  return this.orderRepo.find({
-    where: { userId },
-    relations: [
-      'items',
-      'items.product',
-      'address',
-    ],
-    order: {
-      created_at: 'DESC',
-    },
-  });
-}
+    return this.orderRepo.find({
+      where: { userId },
+      relations: ['items', 'items.product', 'address'],
+      order: {
+        created_at: 'DESC',
+      },
+    });
+  }
 
-
+  // SINGLE ORDER
   async getOrderById(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
       where: {
@@ -145,34 +143,21 @@ export class OrderService {
     return order;
   }
 
-  async handlePaymentSuccess(paymentIntentId: string) {
-    console.log('HANDLE PAYMENT SUCCESS:', paymentIntentId);
+  // PAYMENT FAILED / EXPIRED
+  async markFailedByOrderId(orderId: string) {
+    if (!orderId) return;
 
     const order = await this.orderRepo.findOne({
-      where: { stripePaymentIntentId: paymentIntentId },
-    });
-
-    console.log('ORDER FOUND:', order?.id);
-
-    if (!order) return;
-
-    order.status = OrderStatus.PAID;
-    await this.orderRepo.save(order);
-
-    await this.cartService.clearCart(order.userId);
-  }
-
-  async handlePaymentFailed(paymentIntentId: string) {
-    const order = await this.orderRepo.findOne({
-      where: { stripePaymentIntentId: paymentIntentId },
+      where: { id: orderId },
     });
 
     if (!order) return;
 
-    order.status = OrderStatus.FAILED;
+    order.status = Status.FAILED;
     await this.orderRepo.save(order);
   }
 
+  // PAYMENT SUCCESS
   async markPaidByOrderId(orderId: string) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -180,9 +165,77 @@ export class OrderService {
 
     if (!order) return;
 
-    order.status = OrderStatus.PAID;
+    order.status = Status.CONFIRMED;
     await this.orderRepo.save(order);
 
     await this.cartService.clearCart(order.userId);
+  }
+
+  // ADMIN ORDER LIST
+  async getOrdersForAdmin(
+    adminId: string,
+    status?: Status,
+    page = 1,
+    limit = 10,
+  ) {
+    const qb = this.orderRepo
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'item')
+      .leftJoinAndSelect('item.product', 'product')
+      .leftJoinAndSelect('order.address', 'address')
+      .where('product.userId = :adminId', { adminId });
+
+    if (status) {
+      qb.andWhere('order.status = :status', { status });
+    }
+
+    qb.orderBy('order.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [orders, total] = await qb.getManyAndCount();
+
+    return {
+      data: orders,
+      total,
+      page,
+      lastPage: Math.ceil(total / limit),
+    };
+  }
+
+  // ADMIN UPDATE STATUS
+  async updateOrderStatusByAdmin(
+    orderId: string,
+    adminId: string,
+    status: Status,
+  ) {
+    const order = await this.orderRepo
+      .createQueryBuilder('order')
+      .leftJoin('order.items', 'item')
+      .leftJoin('item.product', 'product')
+      .where('order.id = :orderId', { orderId })
+      .andWhere('product.userId = :adminId', { adminId })
+      .getOne();
+
+    if (!order) {
+      throw new ForbiddenException('Not allowed');
+    }
+
+    // transition rules
+    if (status === Status.CONFIRMED) {
+      throw new BadRequestException('Admin cannot confirm payment');
+    }
+
+    if (order.status === Status.CONFIRMED && status !== Status.SHIPPED) {
+      throw new BadRequestException('Only SHIPPED allowed');
+    }
+
+    if (order.status === Status.SHIPPED && status !== Status.DELIVERED) {
+      throw new BadRequestException('Only DELIVERED allowed');
+    }
+
+    order.status = status;
+
+    return this.orderRepo.save(order);
   }
 }

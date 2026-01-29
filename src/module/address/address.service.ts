@@ -68,14 +68,11 @@ export class AddressService {
 
   async setDefault(id: string, userId: string) {
     return this.repo.manager.transaction(async (manager) => {
-      console.log('PARAM id:', id);
-      console.log('PARAM userId:', userId);
-
+     
       const all = await manager
         .createQueryBuilder(Address, 'address')
         .getMany();
 
-      console.log('ALL ADDRESSES FROM ORM:', all);
 
       const address = await manager
         .createQueryBuilder(Address, 'address')

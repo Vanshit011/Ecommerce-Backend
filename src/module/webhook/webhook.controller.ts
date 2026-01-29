@@ -1,4 +1,10 @@
-import { Controller, Post, Req, Res, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Req,
+  Res,
+  HttpCode,
+} from '@nestjs/common';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { OrderService } from '../order/order.service';
 
@@ -12,7 +18,7 @@ export class WebhookController {
   @Post('stripe')
   @HttpCode(200)
   async handleStripe(@Req() req: any, @Res() res: any) {
-    const sig = req.headers['stripe-signature'] as string;
+    const sig = req.headers['stripe-signature'];
 
     const stripe = this.stripeService.getClient();
 
@@ -20,47 +26,63 @@ export class WebhookController {
 
     try {
       event = stripe.webhooks.constructEvent(
-        req.body, // RAW BUFFER
+        req.body, // RAW buffer is required!
         sig,
         process.env.STRIPE_WEBHOOK_SECRET!,
       );
     } catch (err: any) {
-      console.error('❌ SIGNATURE ERROR:', err.message);
+      console.error('❌ STRIPE SIGNATURE ERROR:', err.message);
       return res.status(400).send('Webhook Error');
     }
 
     const intent = event.data.object as any;
 
-    console.log('🔥 STRIPE EVENT:', event.type, intent?.id);
+    console.log('🔥 STRIPE EVENT:', event.type);
 
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-      case 'charge.succeeded': {
-        const obj: any = event.data.object;
+    // 🔑 Helper to extract orderId
+    const getOrderIdFromStripe = (obj: any) => {
+      return (
+        obj?.metadata?.orderId ||
+        obj?.payment_intent?.metadata?.orderId ||
+        null
+      );
+    };
 
-        const orderId =
-          obj.metadata?.orderId || obj.payment_intent?.metadata?.orderId;
+    try {
+      switch (event.type) {
+        // ✅ PAYMENT SUCCESS
+        case 'payment_intent.succeeded': {
+          const orderId = getOrderIdFromStripe(intent);
 
-        console.log('🎯 ORDER ID FROM STRIPE:', orderId);
+          console.log('🎯 SUCCESS ORDER:', orderId);
 
-        if (!orderId) {
-          console.log('❌ NO ORDER ID FOUND IN STRIPE METADATA');
+          if (orderId) {
+            await this.orderService.markPaidByOrderId(orderId);
+          }
+
           break;
         }
 
-        await this.orderService.markPaidByOrderId(orderId);
-        break;
+        // ❌ PAYMENT FAILED
+        case 'payment_intent.payment_failed':
+        case 'payment_intent.canceled': {
+          const orderId = getOrderIdFromStripe(intent);
+
+          console.log('🎯 FAILED ORDER:', orderId);
+
+          if (orderId) {
+            await this.orderService.markFailedByOrderId(orderId);
+          }
+
+          break;
+        }
+
+        default:
+          console.log('⚠️ UNHANDLED EVENT:', event.type);
       }
-
-      case 'payment_intent.payment_failed': {
-        console.log('❌ PAYMENT FAILED:', intent.id);
-
-        await this.orderService.handlePaymentFailed(intent.id);
-        break;
-      }
-
-      default:
-        console.log('⚠️ UNHANDLED EVENT TYPE:', event.type);
+    } catch (err) {
+      console.error('❌ WEBHOOK PROCESS ERROR:', err);
+      // still return 200 to Stripe to avoid retries storm
     }
 
     return res.json({ received: true });
