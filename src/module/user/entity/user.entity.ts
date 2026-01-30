@@ -8,6 +8,7 @@ import { Favorite } from '../../../module/favorite/entity/favorite.entity';
 import { CartItem } from '../../../module/cart/entity/cart.entity';
 import { Address } from '../../address/entity/address.entity';
 import { Order } from '../../order/entity/order.entity';
+import { Payment } from '../../payments/entity/payments.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -50,5 +51,8 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Order, (order) => order.user)
   order: Order[];
+
+  @OneToMany(() => Payment, (payment) => payment.user)
+  payments: Payment[];
 }
 export { UserRole };

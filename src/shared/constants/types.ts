@@ -1,4 +1,4 @@
-import { UserRole } from '../../shared/constants/enum';
+import { UserRole, Status } from '../../shared/constants/enum';
 
 export interface JwtPayload {
   sub: string;
@@ -13,4 +13,9 @@ export interface ProductQueryParams {
   minPrice?: number;
   maxPrice?: number;
   sort?: string;
+}
+export interface AdminOrderQueryParams {
+  page: number;
+  limit: number;
+  status?: Status[];
 }

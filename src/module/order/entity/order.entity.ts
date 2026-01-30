@@ -4,6 +4,7 @@ import { Status } from '../../../shared/constants/enum';
 import { User } from '../../user/entity/user.entity';
 import { Address } from '../../address/entity/address.entity';
 import { OrderItem } from './order-item.entity';
+import { Payment } from '../../payments/entity/payments.entity';
 
 @Entity('orders')
 export class Order extends BaseEntity {
@@ -34,4 +35,7 @@ export class Order extends BaseEntity {
 
   @Column({ nullable: true })
   stripePaymentIntentId: string;
+
+  @OneToMany(() => Payment, (payment) => payment.order)
+  payments: Payment[];
 }

@@ -12,8 +12,9 @@ import { OrderItem } from './entity/order-item.entity';
 import { CartService } from '../cart/cart.service';
 import { Status } from '../../shared/constants/enum';
 import { Address } from '../address/entity/address.entity';
-import { StripeService } from './../../core/stripe/stripe.service';
-
+import { AdminOrderQueryParams } from '../../shared/constants/types';
+import { Payment } from '../payments/entity/payments.entity';
+import { StripeService } from '../../core/stripe/stripe.service';
 @Injectable()
 export class OrderService {
   constructor(
@@ -27,9 +28,13 @@ export class OrderService {
     private addressRepo: Repository<Address>,
 
     private cartService: CartService,
+    @InjectRepository(Payment)
+    private paymentRepo: Repository<Payment>,
 
     private stripeService: StripeService,
   ) {}
+
+  //USER SIDE
 
   // CREATE ORDER FROM CART
   async createFromCart(userId: string) {
@@ -76,43 +81,32 @@ export class OrderService {
     return order;
   }
 
-  // PAY ORDER (STRIPE INTENT)
-  async payOrder(orderId: string, userId: string) {
+  // PAYMENT FAILED / EXPIRED
+  async markFailedByOrderId(orderId: string) {
+    if (!orderId) return;
+
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, userId },
+      where: { id: orderId },
     });
 
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
+    if (!order) return;
 
-    // already paid
-    if (order.status !== Status.PENDING) {
-      throw new BadRequestException('Order cannot be paid');
-    }
+    order.status = Status.FAILED;
+    await this.orderRepo.save(order);
+  }
 
-    const stripe = this.stripeService.getClient();
-
-    //  Always create NEW intent if old one exists
-    const intent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(order.totalAmount) * 100),
-      currency: 'inr',
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      metadata: {
-        orderId: order.id,
-        userId,
-      },
+  // PAYMENT SUCCESS
+  async markPaidByOrderId(orderId: string) {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
     });
 
-    order.stripePaymentIntentId = intent.id;
+    if (!order) return;
+
+    order.status = Status.CONFIRMED;
     await this.orderRepo.save(order);
 
-    return {
-      clientSecret: intent.client_secret,
-      paymentIntentId: intent.id,
-    };
+    await this.cartService.clearCart(order.userId);
   }
 
   // USER ORDERS
@@ -143,63 +137,115 @@ export class OrderService {
     return order;
   }
 
-  // PAYMENT FAILED / EXPIRED
-  async markFailedByOrderId(orderId: string) {
-    if (!orderId) return;
-
+  // USER CANCEL HIS ORDER
+  async cancelOrderByUser(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId },
+      where: { id: orderId, userId },
     });
 
-    if (!order) return;
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
 
-    order.status = Status.FAILED;
-    await this.orderRepo.save(order);
+    // already cancelled
+    if (order.status === Status.CANCELLED) {
+      throw new BadRequestException('Order already cancelled');
+    }
+
+    // cannot cancel after shipped
+    if (order.status === Status.SHIPPED || order.status === Status.DELIVERED) {
+      throw new BadRequestException('Order cannot be cancelled after shipment');
+    }
+
+    // unpaid order → just cancel
+    if (order.status === Status.PENDING) {
+      order.status = Status.CANCELLED;
+      return this.orderRepo.save(order);
+    }
+
+    // failed payment → just cancel
+    if (order.status === Status.FAILED) {
+      order.status = Status.CANCELLED;
+      return this.orderRepo.save(order);
+    }
+
+    //  PAID ORDER → REFUND
+    if (order.status === Status.CONFIRMED) {
+      const payment = await this.paymentRepo.findOne({
+        where: {
+          orderId: order.id,
+          status: 'succeeded',
+        },
+        order: { created_at: 'DESC' },
+      });
+
+      if (!payment) {
+        throw new BadRequestException('Payment not found for refund');
+      }
+
+      const stripe = this.stripeService.getClient();
+
+      const refund = await stripe.refunds.create({
+        payment_intent: payment.stripePaymentIntentId,
+      });
+
+      // update payment
+      payment.status = 'refunded';
+      payment.refundId = refund.id;
+      await this.paymentRepo.save(payment);
+
+      // update order
+      order.status = Status.CANCELLED;
+      await this.orderRepo.save(order);
+
+      return {
+        message: 'Order cancelled and refunded',
+        refundId: refund.id,
+      };
+    }
+
+    throw new BadRequestException('Order cannot be cancelled');
   }
 
-  // PAYMENT SUCCESS
-  async markPaidByOrderId(orderId: string) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
-    });
-
-    if (!order) return;
-
-    order.status = Status.CONFIRMED;
-    await this.orderRepo.save(order);
-
-    await this.cartService.clearCart(order.userId);
-  }
+  //ADMIN SIDE
 
   // ADMIN ORDER LIST
-  async getOrdersForAdmin(
-    adminId: string,
-    status?: Status,
-    page = 1,
-    limit = 10,
-  ) {
+  async getOrdersForAdmin(adminId: string, params: AdminOrderQueryParams) {
+    let { page, limit, status } = params;
+
+    // defaults
+    page = page || 1;
+    limit = limit || 10;
+
+    // clamp
+    page = Math.max(1, page);
+    limit = Math.min(100, Math.max(1, limit));
+
     const qb = this.orderRepo
       .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.items', 'item')
       .leftJoinAndSelect('item.product', 'product')
       .leftJoinAndSelect('order.address', 'address')
       .where('product.userId = :adminId', { adminId });
 
-    if (status) {
-      qb.andWhere('order.status = :status', { status });
+    //  STATUS FILTER
+    if (status?.length) {
+      qb.andWhere('order.status IN (:...status)', { status });
     }
 
-    qb.orderBy('order.created_at', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+    qb.orderBy('order.created_at', 'DESC').take(limit);
 
     const [orders, total] = await qb.getManyAndCount();
+
+    const lastPage = Math.ceil(total / limit);
 
     return {
       data: orders,
       total,
       page,
-      lastPage: Math.ceil(total / limit),
+      limit,
+      lastPage,
     };
   }
 
@@ -222,10 +268,6 @@ export class OrderService {
     }
 
     // transition rules
-    if (status === Status.CONFIRMED) {
-      throw new BadRequestException('Admin cannot confirm payment');
-    }
-
     if (order.status === Status.CONFIRMED && status !== Status.SHIPPED) {
       throw new BadRequestException('Only SHIPPED allowed');
     }
