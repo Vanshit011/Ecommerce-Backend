@@ -15,6 +15,7 @@ import { StripeModule } from './core/stripe/stripe.module';
 import { OrderModule } from './module/order/order.module';
 import { WebhookModule } from './module/webhook/webhook.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { PaymentsModule } from './module/payments/payments.module';
 @Module({
   imports: [
     StripeModule,
@@ -35,6 +36,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     CartModule,
     AddressModule,
     OrderModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

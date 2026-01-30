@@ -10,14 +10,15 @@ import { AddressModule } from '../address/address.module';
 import { Address } from '../address/entity/address.entity';
 import { StripeModule } from '../../core/stripe/stripe.module';
 import { OrderCronService } from './order-cron.service';
+import { Payment } from '../payments/entity/payments.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Address]),
+    TypeOrmModule.forFeature([Order, OrderItem, Address, Payment]),
     CartModule,
     AddressModule,
-    StripeModule,
     AuthModule,
+    StripeModule,
   ],
   providers: [OrderService, OrderCronService],
   controllers: [OrderController],
