@@ -29,9 +29,9 @@ export class CategoriesController {
 
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(UserRole.ADMIN)
-  findAll(): Promise<Category[]> {
-    return this.categoriesService.findAll();
+  async findAll(): Promise<Category[]> {
+    const tree = await this.categoriesService.findAll();
+    return tree;
   }
 
   @Put(':id')
