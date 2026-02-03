@@ -63,7 +63,7 @@ export class CartService {
   async getMyCart(userId: string) {
     const items = await this.cartRepo.find({
       where: { user: { id: userId } },
-      relations: ['product'],
+    relations: ['product', 'product.images', 'product.category'],
       order: {
         created_at: 'ASC',
       },

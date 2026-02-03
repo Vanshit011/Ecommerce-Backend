@@ -9,8 +9,10 @@ import {
   Put,
   Param,
   Delete,
+  UploadedFiles,
+  Query,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AuthGuard } from '../../core/guard/auth.guard';
@@ -20,7 +22,10 @@ import { UserRole } from '../../shared/constants/enum';
 import { cloudinaryStorage } from '../../core/utils/cloudinary-storage';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { ProductQuery } from 'src/core/decorator/product-query.decorator';
-import type { ProductQueryParams } from '../../shared/constants/types';
+import type {
+  AdminProductQueryParams,
+  ProductQueryParams,
+} from '../../shared/constants/types';
 
 @Controller('products')
 export class ProductController {
@@ -31,53 +36,54 @@ export class ProductController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
-    FileInterceptor('image', {
+    FilesInterceptor('images', 8, {
       storage: cloudinaryStorage,
       limits: {
-        fileSize: 2 * 1024 * 1024, // 2MB
+        fileSize: 2 * 1024 * 1024,
       },
     }),
   )
   async create(
     @Body() dto: CreateProductDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
     @GetUser('id') userId: string,
   ) {
-    const imageUrl = file.path;
-    const publicId = file.filename;
-
-    return this.productService.create(dto, imageUrl, publicId, userId);
+    return this.productService.create(dto, files, userId);
   }
 
   //admin product
   @Get('/my-products')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  findMyProducts(@GetUser('id') userId: string) {
-    return this.productService.findAllForAdmin(userId);
+  findMyProducts(
+    @GetUser('id') userId: string,
+    @Query() query: AdminProductQueryParams,
+  ) {
+    return this.productService.findAllForAdmin(userId, query.page, query.limit);
   }
 
-  //user Prodcuts with pagination
-  @Get()
-  findAll(@ProductQuery() query: ProductQueryParams) {
-    return this.productService.findAllForUsers(query);
-  }
-
-  //update product admin only
+  //admin update product
   @Put(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FilesInterceptor('images', 8, {
+      storage: cloudinaryStorage,
+      limits: {
+        fileSize: 2 * 1024 * 1024,
+      },
+    }),
+  )
   update(
     @Param('id') id: string,
     @Body() dto: Partial<CreateProductDto>,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
     @GetUser('id') userId: string,
   ) {
-    return this.productService.update(id, dto, userId, file);
+    return this.productService.update(id, dto, files, userId);
   }
 
-  //delete product admin only
+  //admin delete product
   @Delete(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -85,19 +91,19 @@ export class ProductController {
     return this.productService.delete(id, userId);
   }
 
+  //user Prodcuts with pagination
+  @Get()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER, UserRole.ADMIN)
+  findAll(@ProductQuery() query: ProductQueryParams) {
+    return this.productService.findAllForUsers(query);
+  }
+
   // get single product details for users
   @Get(':id')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
+  @Roles(UserRole.USER, UserRole.ADMIN)
   getProductDetails(@Param('id') id: string) {
-    return this.productService.getProductDetails(id);
-  }
-
-  //get product images
-  @Get(':id/images')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  getProductImages(@Param('id') id: string) {
     return this.productService.getProductDetails(id);
   }
 }

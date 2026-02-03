@@ -113,7 +113,13 @@ export class OrderService {
   async getUserOrders(userId: string) {
     return this.orderRepo.find({
       where: { userId },
-      relations: ['items', 'items.product', 'address'],
+      relations: [
+        'items',
+        'items.product',
+        'items.product.images',
+        'items.product.category',
+        'address',
+      ],
       order: {
         created_at: 'DESC',
       },
@@ -127,7 +133,14 @@ export class OrderService {
         id: orderId,
         user: { id: userId },
       },
-      relations: ['address', 'user'],
+      relations: [
+        'address',
+        'user',
+        'items',
+        'items.product',
+        'items.product.images',
+        'items.product.category',
+      ],
     });
 
     if (!order) {
@@ -211,7 +224,7 @@ export class OrderService {
 
   // ADMIN ORDER LIST
   async getOrdersForAdmin(adminId: string, params: AdminOrderQueryParams) {
-    let { page, limit, status } = params;
+    let { page, limit, status, paymentStatus } = params;
 
     // defaults
     page = page || 1;
@@ -226,15 +239,27 @@ export class OrderService {
       .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.items', 'item')
       .leftJoinAndSelect('item.product', 'product')
+      .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('order.address', 'address')
+      .leftJoinAndSelect('order.payments', 'payment')
       .where('product.userId = :adminId', { adminId });
 
-    //  STATUS FILTER
+    // Order status filter
     if (status?.length) {
       qb.andWhere('order.status IN (:...status)', { status });
     }
 
-    qb.orderBy('order.created_at', 'DESC').take(limit);
+    // Payment status filter
+    if (paymentStatus?.length) {
+      qb.andWhere('payment.status IN (:...paymentStatus)', {
+        paymentStatus,
+      });
+    }
+
+    // Pagination
+    qb.orderBy('order.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     const [orders, total] = await qb.getManyAndCount();
 
@@ -265,15 +290,6 @@ export class OrderService {
 
     if (!order) {
       throw new ForbiddenException('Not allowed');
-    }
-
-    // transition rules
-    if (order.status === Status.CONFIRMED && status !== Status.SHIPPED) {
-      throw new BadRequestException('Only SHIPPED allowed');
-    }
-
-    if (order.status === Status.SHIPPED && status !== Status.DELIVERED) {
-      throw new BadRequestException('Only DELIVERED allowed');
     }
 
     order.status = status;

@@ -60,6 +60,7 @@ export class OrderController {
       page: Number(query.page) || 1,
       limit: Number(query.limit) || 10,
       status: query.status?.split(','),
+      paymentStatus: query.paymentStatus?.split(','),
     };
 
     return this.orderService.getOrdersForAdmin(userId, params);
