@@ -15,3 +15,10 @@ export enum Status {
   CANCELLED = 'cancelled',
   FAILED = 'failed',
 }
+
+export enum ProductStatus {
+  INSTOCK = 'INSTOCK',
+  OUTOFSTOCK = 'OUTOFSTOCK',
+  PREORDER = 'PREORDER',
+}
+

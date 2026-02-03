@@ -24,11 +24,7 @@ export class CategoriesService {
       description: dto.description,
     });
 
-    // allow creating ROOT itself
-    if (dto.name === 'ROOT') {
-      return this.categoryRepository.save(category);
-    }
-
+    // if parentId provided attach to parent
     if (dto.parentId) {
       const parent = await this.categoryRepository.findOneBy({
         id: dto.parentId,
@@ -39,18 +35,6 @@ export class CategoriesService {
       }
 
       category.parent = parent;
-    } else {
-      const root = await this.categoryRepository.findOneBy({
-        name: 'ROOT',
-      });
-
-      if (!root) {
-        throw new BadRequestException(
-          'Root category missing. Create ROOT first.',
-        );
-      }
-
-      category.parent = root;
     }
 
     return this.categoryRepository.save(category);
@@ -87,7 +71,7 @@ export class CategoriesService {
       if (!category) {
         throw new NotFoundException('Category not found');
       }
-
+      //if parent id not there in this called
       const parent = category.parent ?? null;
 
       // move children up

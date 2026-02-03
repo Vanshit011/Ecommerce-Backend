@@ -18,4 +18,9 @@ export interface AdminOrderQueryParams {
   page: number;
   limit: number;
   status?: Status[];
+  paymentStatus?: string[];
+}
+export interface AdminProductQueryParams {
+  page: number;
+  limit: number;
 }
