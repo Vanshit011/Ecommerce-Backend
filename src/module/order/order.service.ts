@@ -55,9 +55,10 @@ export class OrderService {
       throw new NotFoundException('No default address found');
     }
 
+    //  calculate from SNAPSHOT price
     let total = 0;
     for (const item of cart.items) {
-      total += Number(item.product.price) * item.quantity;
+      total += Number(item.priceSnapshot) * item.quantity;
     }
 
     const order = await this.orderRepo.save({
@@ -71,12 +72,27 @@ export class OrderService {
       this.orderItemRepo.create({
         order,
         product: item.product,
-        price: item.product.price,
+        price: item.priceSnapshot,
         quantity: item.quantity,
+
+        //  variant info
+        size: item.size,
+        color: item.color,
+        variantId: item.variantId,
+
+        //  product snapshot
+        productSnapshot: {
+          name: item.product.name,
+          sku: item.product.sku,
+          image: item.product.images?.[0]?.url,
+        },
       }),
     );
 
     await this.orderItemRepo.save(orderItems);
+
+    //  clear cart after order
+    await this.cartService.clearCart(userId);
 
     return order;
   }
@@ -96,17 +112,50 @@ export class OrderService {
   }
 
   // PAYMENT SUCCESS
-  async markPaidByOrderId(orderId: string) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
+  async handlePaymentSuccess(orderId: string, intentId: string) {
+    await this.orderRepo.manager.transaction(async (manager) => {
+      const orderRepo = manager.getRepository(Order);
+      const paymentRepo = manager.getRepository(Payment);
+
+      const order = await orderRepo.findOne({
+        where: { id: orderId },
+        relations: {
+          items: {
+            product: true,
+          },
+        },
+      });
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      const payment = await paymentRepo.findOne({
+        where: { stripePaymentIntentId: intentId },
+      });
+
+      if (!payment) throw new NotFoundException('Payment not found');
+
+      if (payment.status === 'succeeded') return;
+
+      //  update payment
+      payment.status = 'succeeded';
+      payment.method = 'card';
+      await paymentRepo.save(payment);
+
+      //  update order
+      order.status = Status.CONFIRMED;
+      await orderRepo.save(order);
+
+      //  reduce stock
+      for (const item of order.items) {
+        if (item.product.stockQty < item.quantity) {
+          throw new Error(`Stock mismatch for product ${item.product.id}`);
+        }
+
+        await manager
+          .getRepository(item.product.constructor.name)
+          .decrement({ id: item.product.id }, 'stockQty', item.quantity);
+      }
     });
-
-    if (!order) return;
-
-    order.status = Status.CONFIRMED;
-    await this.orderRepo.save(order);
-
-    await this.cartService.clearCart(order.userId);
   }
 
   // USER ORDERS

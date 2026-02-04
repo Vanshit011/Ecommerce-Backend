@@ -42,10 +42,9 @@ export class WebhookController {
           const orderId = getOrderIdFromStripe(intent);
 
           if (orderId) {
-            await this.orderService.markPaidByOrderId(orderId);
+            await this.orderService.handlePaymentSuccess(orderId, intentId);
           }
 
-          await this.paymentsService.markSucceeded(intentId);
           break;
         }
 
