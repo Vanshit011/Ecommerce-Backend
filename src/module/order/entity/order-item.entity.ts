@@ -18,4 +18,21 @@ export class OrderItem extends BaseEntity {
 
   @Column()
   quantity: number;
+
+  @Column({ nullable: true })
+  size: string;
+
+  @Column({ nullable: true })
+  color: string;
+
+  @Column({ nullable: true })
+  variantId: string;
+
+  // optional but highly recommended
+  @Column({ type: 'jsonb', nullable: true })
+  productSnapshot: {
+    name: string;
+    sku: string;
+    image: string;
+  };
 }

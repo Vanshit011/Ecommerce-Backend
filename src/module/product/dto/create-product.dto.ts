@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsEnum,
   IsInt,
+  IsBoolean,
 } from 'class-validator';
 import { ProductStatus } from '../../../shared/constants/enum';
 
@@ -69,4 +70,8 @@ export class CreateProductDto {
   @IsOptional()
   @IsInt()
   mainImageIndex?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

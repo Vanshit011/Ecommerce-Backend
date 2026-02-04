@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartItem } from './entity/cart.entity';
@@ -15,8 +15,14 @@ export class CartService {
     private productRepo: Repository<Product>,
   ) {}
 
-  // ADD TO CART
-  async addToCart(userId: string, productId: string) {
+  //add cart
+  async addToCart(
+    userId: string,
+    productId: string,
+    size: string,
+    color: string,
+    quantity = 1,
+  ) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
     });
@@ -25,16 +31,32 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
-    //  ACTIVE ITEM
+    //  Validate selected options
+    if (size && product.sizes && !product.sizes.includes(size)) {
+      throw new BadRequestException('Invalid size selected');
+    }
+
+    if (color && product.colors && !product.colors.includes(color)) {
+      throw new BadRequestException('Invalid color selected');
+    }
+
+    //  Check stock
+    if (product.stockQty < quantity) {
+      throw new BadRequestException('Out of stock');
+    }
+
+    //  Find existing cart item WITH SAME VARIANT
     const activeItem = await this.cartRepo.findOne({
       where: {
         user: { id: userId },
         product: { id: productId },
+        size,
+        color,
       },
     });
 
     if (activeItem) {
-      activeItem.quantity += 1;
+      activeItem.quantity += quantity;
 
       await this.cartRepo.save(activeItem);
 
@@ -44,11 +66,14 @@ export class CartService {
       };
     }
 
-    // Just insert new row
+    //  Insert new row
     const newItem = this.cartRepo.create({
       user: { id: userId },
       product,
-      quantity: 1,
+      quantity,
+      size,
+      color,
+      priceSnapshot: product.salePrice ?? product.price,
     });
 
     const saved = await this.cartRepo.save(newItem);
@@ -63,7 +88,7 @@ export class CartService {
   async getMyCart(userId: string) {
     const items = await this.cartRepo.find({
       where: { user: { id: userId } },
-    relations: ['product', 'product.images', 'product.category'],
+      relations: ['product', 'product.images', 'product.category'],
       order: {
         created_at: 'ASC',
       },
@@ -77,15 +102,33 @@ export class CartService {
     userId: string,
     productId: string,
     quantity: number,
+    size?: string,
+    color?: string,
   ) {
+    const where: any = {
+      user: { id: userId },
+      product: { id: productId },
+    };
+
+    // If size/color is provided, match it; otherwise match null/undefined
+    if (size) where.size = size;
+    else where.size = null;
+
+    if (color) where.color = color;
+    else where.color = null;
+
     const item = await this.cartRepo.findOne({
-      where: {
-        user: { id: userId },
-        product: { id: productId },
-      },
+      where,
+      relations: ['product'],
     });
+
     if (!item) {
       throw new NotFoundException('Cart item not found');
+    }
+
+    // Check stock for the new absolute quantity
+    if (item.product && item.product.stockQty < quantity) {
+      throw new BadRequestException('Requested quantity exceeds available stock');
     }
 
     item.quantity = quantity;

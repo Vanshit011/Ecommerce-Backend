@@ -79,7 +79,6 @@ export class ProductService {
 
     const [data, total] = await this.productRepo.findAndCount({
       where: {
-        isActive: true,
         userId,
       },
       relations: ['category', 'images'],
@@ -117,10 +116,15 @@ export class ProductService {
       throw new NotFoundException('Product not found or access denied');
     }
 
-    // ---------- sanitize + transform ----------
     if (dto.price !== undefined) dto.price = Number(dto.price);
     if (dto.salePrice !== undefined) dto.salePrice = Number(dto.salePrice);
     if (dto.stockQty !== undefined) dto.stockQty = Number(dto.stockQty);
+
+    if (dto.isActive !== undefined) {
+      const raw = dto.isActive as any;
+
+      dto.isActive = raw === true || raw === 'true' || raw === 1 || raw === '1';
+    }
 
     if (typeof dto.availability === 'string') {
       dto.availability = dto.availability.toUpperCase() as any;
@@ -215,7 +219,13 @@ export class ProductService {
 
   // USER see all products
   async findAllForUsers(query: ProductQueryParams) {
-    const { page, limit, skip, search, categories } = query;
+    let { page, limit, skip, search, categories, minPrice, maxPrice, sort } =
+      query;
+
+    page = page || 1;
+    limit = limit || 10;
+
+    skip = (page - 1) * limit;
 
     const qb = this.productRepo
       .createQueryBuilder('products')
@@ -223,98 +233,73 @@ export class ProductService {
       .leftJoinAndSelect('products.images', 'images')
       .where('products.isActive = :active', { active: true });
 
-    //  search
+    //  SEARCH
     if (search) {
       qb.andWhere(
-        `(LOWER(products.name) LIKE :search
+        `(
+        LOWER(products.name) LIKE :search
         OR LOWER(products.description) LIKE :search
-        OR LOWER(category.name) LIKE :search)`,
+        OR LOWER(category.name) LIKE :search
+      )`,
         {
           search: `%${search.toLowerCase()}%`,
         },
       );
     }
 
-    //category tree filter
+    //  CATEGORY FILTER
     if (categories?.length) {
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-      const ids: string[] = [];
-      const names: string[] = [];
-
-      for (const value of categories) {
-        uuidRegex.test(value)
-          ? ids.push(value)
-          : names.push(value.toLowerCase());
-      }
-
-      const rows = await this.categoryRepo.query(
-        `
-        WITH RECURSIVE tree AS (
-          SELECT id
-          FROM categories
-          WHERE
-            ($1::boolean AND id = ANY($2))
-            OR
-            ($3::boolean AND LOWER(name) = ANY($4))
-
-          UNION ALL
-
-          SELECT c.id
-          FROM categories c
-          JOIN tree t ON c."parentId" = t.id
-        )
-        SELECT DISTINCT id FROM tree;
-      `,
-        [ids.length > 0, ids, names.length > 0, names],
-      );
-
-      const allIds = rows.map((r) => r.id);
-
-      qb.andWhere('category.id IN (:...ids)', {
-        ids: allIds,
+      qb.andWhere('category.id IN (:...categories)', {
+        categories,
       });
     }
 
-    //  price filters
-    if (query.minPrice !== undefined) {
-      qb.andWhere('products.price >= :minPrice', {
-        minPrice: query.minPrice,
-      });
+    //  PRICE RANGE
+    if (minPrice !== undefined) {
+      qb.andWhere('products.price >= :minPrice', { minPrice });
     }
 
-    if (query.maxPrice !== undefined) {
-      qb.andWhere('products.price <= :maxPrice', {
-        maxPrice: query.maxPrice,
-      });
+    if (maxPrice !== undefined) {
+      qb.andWhere('products.price <= :maxPrice', { maxPrice });
     }
 
-    // sorting
-    if (query.sort === 'price_asc') {
-      qb.orderBy('products.price', 'ASC');
-    } else if (query.sort === 'price_desc') {
-      qb.orderBy('products.price', 'DESC');
-    } else {
-      qb.orderBy('products.created_at', 'DESC');
+    //  SORTING
+    switch (sort) {
+      case 'price_asc':
+        qb.orderBy('products.price', 'ASC');
+        break;
+
+      case 'price_desc':
+        qb.orderBy('products.price', 'DESC');
+        break;
+
+      case 'newest':
+        qb.orderBy('products.created_at', 'DESC');
+        break;
+
+      default:
+        qb.orderBy('products.created_at', 'DESC');
     }
 
-    // ensure main image first
-    qb.addOrderBy('images.isMain', 'DESC');
+    //  prevent duplicates from images join
+    qb.distinct(true);
 
-    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
+    // pagination
+    qb.skip(skip).take(limit);
+
+    const [products, total] = await qb.getManyAndCount();
+
+    const lastPage = Math.ceil(total / limit);
 
     return {
-      data,
+      data: products,
       meta: {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
-        categories: categories || [],
-        minPrice: query.minPrice,
-        maxPrice: query.maxPrice,
-        sort: query.sort || null,
+        totalPages: lastPage,
+        hasNextPage: page < lastPage,
+        hasPrevPage: page > 1,
       },
     };
   }

@@ -31,7 +31,7 @@ import type {
 export class ProductController {
   constructor(private productService: ProductService) {}
 
-  // admin only
+// ----------------ADMIN------------------//
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -90,6 +90,8 @@ export class ProductController {
   remove(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.productService.delete(id, userId);
   }
+
+// ----------------USER------------------//
 
   //user Prodcuts with pagination
   @Get()
