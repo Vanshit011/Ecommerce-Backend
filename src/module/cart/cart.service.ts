@@ -128,7 +128,9 @@ export class CartService {
 
     // Check stock for the new absolute quantity
     if (item.product && item.product.stockQty < quantity) {
-      throw new BadRequestException('Requested quantity exceeds available stock');
+      throw new BadRequestException(
+        'Requested quantity exceeds available stock',
+      );
     }
 
     item.quantity = quantity;

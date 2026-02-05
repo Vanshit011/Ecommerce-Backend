@@ -16,7 +16,7 @@ import { TokenService } from './token.service';
     UsersModule,
     MailModule,
     JwtModule.registerAsync({
-      inject: [ConfigService], 
+      inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         expiresIn: config.get<string>('JWT_EXPIRES_IN') || '1d',
@@ -27,4 +27,4 @@ import { TokenService } from './token.service';
   providers: [AuthService, TokenService],
   exports: [AuthService, TokenService, JwtModule],
 })
-export class AuthModule { }
+export class AuthModule {}

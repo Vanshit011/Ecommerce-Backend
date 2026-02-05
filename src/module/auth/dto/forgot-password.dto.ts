@@ -9,4 +9,3 @@ export class ForgotPasswordDto {
   @Matches(/^[6-9]\d{9}$/, { message: 'Invalid mobile number' })
   mobile?: string;
 }
-      

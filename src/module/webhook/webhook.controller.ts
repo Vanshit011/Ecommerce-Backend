@@ -1,4 +1,4 @@
-import { Controller, Post, Req, Res, HttpCode } from '@nestjs/common';
+import { Controller, Post, Req, HttpCode } from '@nestjs/common';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { OrderService } from '../order/order.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -30,7 +30,7 @@ export class WebhookController {
       throw err;
     }
 
-    const intent = event.data.object as any;
+    const intent = event.data.object;
 
     const getOrderIdFromStripe = (obj: any) =>
       obj?.metadata?.orderId || obj?.payment_intent?.metadata?.orderId || null;
@@ -63,7 +63,9 @@ export class WebhookController {
 
         default:
       }
-    } catch (err) {}
+    } catch {
+      // ignore
+    }
 
     return { received: true };
   }

@@ -5,7 +5,6 @@ import { OtpType } from '../../../shared/constants/enum';
 
 @Entity('password_reset_otp')
 export class PasswordResetOtp extends BaseEntity {
-
   @Column()
   otp: string;
 

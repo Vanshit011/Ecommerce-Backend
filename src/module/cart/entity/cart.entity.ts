@@ -5,7 +5,7 @@ import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('cart_items')
 export class CartItem extends BaseEntity {
-  @ManyToOne(() => User, (user) => user.cartItems, {
+  @ManyToOne(() => User, (user) => user.cart_items, {
     onDelete: 'CASCADE',
   })
   user: User;
@@ -25,9 +25,8 @@ export class CartItem extends BaseEntity {
   color: string;
 
   @Column({ nullable: true })
-  variantId: string;
+  variant_id: string;
 
   @Column({ type: 'numeric' })
-  priceSnapshot: number;
+  price_snapshot: number;
 }
-
