@@ -1,9 +1,11 @@
-import { Controller, Post, Req, HttpCode } from '@nestjs/common';
+import * as common from '@nestjs/common';
+import { Request } from 'express';
+import Stripe from 'stripe';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { OrderService } from '../order/order.service';
 import { PaymentsService } from '../payments/payments.service';
 
-@Controller('webhook')
+@common.Controller('webhook')
 export class WebhookController {
   constructor(
     private readonly stripeService: StripeService,
@@ -11,29 +13,33 @@ export class WebhookController {
     private readonly paymentsService: PaymentsService,
   ) {}
 
-  @Post('stripe')
-  @HttpCode(200)
-  async handleStripe(@Req() req: any) {
+  @common.Post('stripe')
+  @common.HttpCode(200)
+  async handleStripe(@common.Req() req: common.RawBodyRequest<Request>) {
     const sig = req.headers['stripe-signature'];
+    if (!sig) {
+      throw new common.BadRequestException('Missing stripe-signature header');
+    }
     const stripe = this.stripeService.getClient();
 
-    let event;
+    let event: Stripe.Event;
 
     try {
       event = stripe.webhooks.constructEvent(
-        req.body,
+        req.rawBody!,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET!,
       );
-    } catch (err: any) {
-      console.error('❌ STRIPE SIGNATURE ERROR:', err.message);
+    } catch (err) {
+      const error = err as Error;
+      console.error('❌ STRIPE SIGNATURE ERROR:', error.message);
       throw err;
     }
 
-    const intent = event.data.object;
+    const intent = event.data.object as Stripe.PaymentIntent;
 
-    const getOrderIdFromStripe = (obj: any) =>
-      obj?.metadata?.orderId || obj?.payment_intent?.metadata?.orderId || null;
+    const getOrderIdFromStripe = (obj: Stripe.PaymentIntent) =>
+      obj?.metadata?.orderId || null;
 
     try {
       switch (event.type) {

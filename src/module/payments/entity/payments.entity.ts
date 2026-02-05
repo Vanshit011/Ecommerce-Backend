@@ -10,16 +10,16 @@ export class Payment extends BaseEntity {
   user: User;
 
   @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  user_id: string;
 
   @ManyToOne(() => Order, (order) => order.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
   order: Order;
   @Column({ name: 'order_id', type: 'uuid' })
-  orderId: string;
+  order_id: string;
 
   @Column()
-  stripePaymentIntentId: string;
+  stripe_payment_intent_id: string;
 
   @Column()
   status: string;
@@ -34,5 +34,5 @@ export class Payment extends BaseEntity {
   method: string;
 
   @Column({ nullable: true })
-  refundId: string;
+  refund_id: string;
 }

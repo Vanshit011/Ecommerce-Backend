@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { UserRole, Status } from '../../shared/constants/enum';
 
 export interface JwtPayload {
@@ -23,4 +24,12 @@ export interface AdminOrderQueryParams {
 export interface AdminProductQueryParams {
   page: number;
   limit: number;
+}
+
+export interface RequestWithUser extends Request {
+  user: {
+    id: string;
+    email: string;
+    role: UserRole;
+  };
 }

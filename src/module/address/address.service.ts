@@ -16,12 +16,12 @@ export class AddressService {
     //check same address current user not added
     const existingAddress = await this.repo.findOne({
       where: {
-        user: { id: userId },
-        addressline1: dto.addressline1,
-        addressline2: dto.addressline2,
+        user_id: userId,
+        address_line_1: dto.address_line_1,
+        address_line_2: dto.address_line_2,
         city: dto.city,
         state: dto.state,
-        postalcode: dto.postalcode,
+        postal_code: dto.postal_code,
       },
     });
 
@@ -31,7 +31,7 @@ export class AddressService {
 
     const address = this.repo.create({
       ...dto,
-      user: { id: userId },
+      user_id: userId,
     });
 
     return this.repo.save(address);
@@ -56,7 +56,7 @@ export class AddressService {
         user: { id: userId },
       },
       order: {
-        isdefault: 'DESC',
+        is_default: 'DESC',
         created_at: 'DESC',
       },
     });
@@ -67,7 +67,7 @@ export class AddressService {
       const address = await manager
         .createQueryBuilder(Address, 'address')
         .where('address.id = :id', { id })
-        .andWhere('address.userId = :userId', { userId })
+        .andWhere('address.user_id = :userId', { userId })
         .getOne();
 
       if (!address) {
@@ -78,17 +78,17 @@ export class AddressService {
       await manager
         .createQueryBuilder()
         .update(Address)
-        .set({ isdefault: false })
-        .where('"userId" = :userId', { userId })
+        .set({ is_default: false })
+        .where('"user_id" = :userId', { userId })
         .execute();
 
       // set selected
       await manager
         .createQueryBuilder()
         .update(Address)
-        .set({ isdefault: true })
+        .set({ is_default: true })
         .where('id = :id', { id })
-        .andWhere('"userId" = :userId', { userId })
+        .andWhere('"user_id" = :userId', { userId })
         .execute();
 
       return { message: 'Default address updated successfully' };

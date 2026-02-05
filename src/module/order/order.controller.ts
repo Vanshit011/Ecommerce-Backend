@@ -55,11 +55,14 @@ export class OrderController {
   @Get('admin/orders')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async adminOrders(@GetUser('id') userId: string, @Query() query: any) {
+  async adminOrders(
+    @GetUser('id') userId: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
     const params: AdminOrderQueryParams = {
       page: Number(query.page) || 1,
       limit: Number(query.limit) || 10,
-      status: query.status?.split(','),
+      status: query.status?.split(',') as Status[],
       paymentStatus: query.paymentStatus?.split(','),
     };
 

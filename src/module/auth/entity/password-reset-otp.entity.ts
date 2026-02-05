@@ -27,7 +27,7 @@ export class PasswordResetOtp extends BaseEntity {
   })
   expires_at: Date;
 
-  @ManyToOne(() => User, (user) => user.PasswordResetOtps, {
+  @ManyToOne(() => User, (user) => user.password_reset_otps, {
     nullable: false,
     onDelete: 'CASCADE',
   })

@@ -26,11 +26,11 @@ export class OrderItem extends BaseEntity {
   color: string;
 
   @Column({ nullable: true })
-  variantId: string;
+  variant_id: string;
 
   // optional but highly recommended
   @Column({ type: 'jsonb', nullable: true })
-  productSnapshot: {
+  product_snapshot: {
     name: string;
     sku: string;
     image: string;

@@ -20,7 +20,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsNumber()
-  salePrice?: number;
+  sale_price?: number;
 
   @IsNotEmpty()
   sku: string;
@@ -30,14 +30,14 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsInt()
-  stockQty: number;
+  stock_qty: number;
 
   @IsOptional()
   @IsEnum(ProductStatus)
   availability: ProductStatus;
 
   @IsNotEmpty()
-  categoryId: string;
+  category_id: string;
 
   @IsOptional()
   sizes?: string[];
@@ -62,16 +62,16 @@ export class CreateProductDto {
   };
 
   @IsOptional()
-  metaTitle?: string;
+  meta_title?: string;
 
   @IsOptional()
-  metaDescription?: string;
+  meta_description?: string;
 
   @IsOptional()
   @IsInt()
-  mainImageIndex?: number;
+  main_image_index?: number;
 
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  is_active?: boolean;
 }

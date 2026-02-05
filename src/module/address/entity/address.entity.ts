@@ -6,13 +6,13 @@ import { Order } from './../../order/entity/order.entity';
 @Entity({ name: 'addresses' })
 export class Address extends BaseEntity {
   @Column({ length: 255 })
-  fullname: string;
+  full_name: string;
 
   @Column({ length: 255 })
-  addressline1: string;
+  address_line_1: string;
 
   @Column({ length: 255, nullable: true })
-  addressline2?: string;
+  address_line_2?: string;
 
   @Column({ length: 100 })
   city: string;
@@ -21,19 +21,19 @@ export class Address extends BaseEntity {
   state: string;
 
   @Column({ length: 20 })
-  postalcode: string;
+  postal_code: string;
 
   @Column({ length: 100 })
   country: string;
 
   @Column({ default: false })
-  isdefault: boolean;
+  is_default: boolean;
 
   @ManyToOne(() => User, (user) => user.address, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
   @Column()
-  userId: string;
+  user_id: string;
 
   @OneToMany(() => Order, (order) => order.address)
   order: Order[];
