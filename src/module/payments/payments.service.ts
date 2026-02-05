@@ -27,7 +27,7 @@ export class PaymentsService {
   // CREATE STRIPE INTENT + SAVE PAYMENT
   async createPaymentIntent(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, userId },
+      where: { id: orderId, user_id: userId },
     });
 
     if (!order) {
@@ -41,39 +41,39 @@ export class PaymentsService {
     const stripe = this.stripeService.getClient();
 
     const intent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(order.totalAmount) * 100),
+      amount: Math.round(Number(order.total_amount) * 100),
       currency: 'inr',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       metadata: {
-        orderId: order.id,
-        userId,
+        order_id: order.id,
+        user_id: userId,
       },
     });
 
     //  SAVE PAYMENT
     await this.paymentRepo.save({
-      userId,
-      orderId: order.id,
-      stripePaymentIntentId: intent.id,
-      amount: Number(order.totalAmount),
+      user_id: userId,
+      order_id: order.id,
+      stripe_payment_intent_id: intent.id,
+      amount: Number(order.total_amount),
       currency: 'inr',
       status: 'processing',
     });
 
     // save on order too
-    order.stripePaymentIntentId = intent.id;
+    order.stripe_payment_intent_id = intent.id;
     await this.orderRepo.save(order);
 
     return {
-      clientSecret: intent.client_secret,
-      paymentIntentId: intent.id,
+      client_secret: intent.client_secret,
+      payment_intent_id: intent.id,
     };
   }
 
   // USER PAYMENTS
   getUserPayments(userId: string) {
     return this.paymentRepo.find({
-      where: { userId },
+      where: { user_id: userId },
       order: { created_at: 'DESC' },
     });
   }
@@ -81,14 +81,14 @@ export class PaymentsService {
   // WEBHOOK HELPERS
   async markSucceeded(intentId: string) {
     await this.paymentRepo.update(
-      { stripePaymentIntentId: intentId },
+      { stripe_payment_intent_id: intentId },
       { status: 'succeeded', method: 'card' },
     );
   }
 
   async markFailed(intentId: string) {
     await this.paymentRepo.update(
-      { stripePaymentIntentId: intentId },
+      { stripe_payment_intent_id: intentId },
       { status: 'failed' },
     );
   }

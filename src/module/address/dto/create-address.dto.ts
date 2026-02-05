@@ -4,17 +4,17 @@ export class CreateAddressDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  fullname: string;
+  full_name: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  addressline1: string;
+  address_line_1: string;
 
   @IsString()
   @IsOptional()
   @MaxLength(255)
-  addressline2?: string;
+  address_line_2?: string;
 
   @IsString()
   @IsOptional()
@@ -26,7 +26,7 @@ export class CreateAddressDto {
 
   @IsString()
   @IsOptional()
-  postalcode?: string;
+  postal_code?: string;
 
   @IsString()
   @IsNotEmpty()

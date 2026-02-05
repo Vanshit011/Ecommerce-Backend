@@ -14,6 +14,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
+import type { RequestWithUser } from '../../shared/constants/types';
 
 @Controller('auth')
 export class AuthController {
@@ -56,7 +57,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard, RolesGuard)
   @Post('logout')
-  async logout(@Req() req: any) {
+  async logout(@Req() req: RequestWithUser) {
     if (!req.user) {
       throw new UnauthorizedException('Invalid token');
     }

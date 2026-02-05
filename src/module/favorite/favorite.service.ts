@@ -66,12 +66,12 @@ export class FavoriteService {
   async getFavorites(userId: string) {
     const favorites = await this.favoriteRepo
       .createQueryBuilder('fav')
-      .where('fav.userId = :userId', { userId })
+      .where('fav.user_id = :userId', { userId })
       .andWhere('fav.deleted_at IS NULL')
       .leftJoinAndSelect('fav.product', 'product')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.category', 'category')
-      .orderBy('images.isMain', 'DESC')
+      .orderBy('images.is_main', 'DESC')
       .getMany();
 
     return favorites.map((fav) => fav.product);

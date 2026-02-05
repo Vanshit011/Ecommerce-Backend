@@ -12,19 +12,19 @@ export class Order extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user: User;
   @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  user_id: string;
 
   @ManyToOne(() => Address, (address) => address.order, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_id' })
   address: Address;
   @Column({ name: 'address_id', type: 'uuid' })
-  addressId: string;
+  address_id: string;
 
   @OneToMany(() => OrderItem, (item) => item.order)
   items: OrderItem[];
 
   @Column('decimal', { precision: 10, scale: 2 })
-  totalAmount: number;
+  total_amount: number;
 
   @Column({
     type: 'enum',
@@ -34,7 +34,7 @@ export class Order extends BaseEntity {
   status: Status;
 
   @Column({ nullable: true })
-  stripePaymentIntentId: string;
+  stripe_payment_intent_id: string;
 
   @OneToMany(() => Payment, (payment) => payment.order)
   payments: Payment[];

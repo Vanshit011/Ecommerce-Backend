@@ -15,10 +15,10 @@ import { ProductStatus } from '../../../shared/constants/enum';
 import { ProductImage } from './product_images.entity';
 
 @Entity('products')
-@Index('idx_products_user', ['userId'])
-@Index('idx_products_category', ['categoryId'])
+@Index('idx_products_user', ['user_id'])
+@Index('idx_products_category', ['category_id'])
 @Index('idx_products_price', ['price'])
-@Index('idx_products_active', ['isActive'])
+@Index('idx_products_active', ['is_active'])
 @Index('idx_products_availability', ['availability'])
 @Index('idx_products_sku', ['sku'], { unique: true })
 export class Product extends BaseEntity {
@@ -35,7 +35,7 @@ export class Product extends BaseEntity {
   images: ProductImage[];
 
   @Column({ type: 'boolean', default: true })
-  isActive: boolean;
+  is_active: boolean;
 
   @Column({ unique: true, nullable: true })
   sku: string;
@@ -44,10 +44,10 @@ export class Product extends BaseEntity {
   brand: string;
 
   @Column({ type: 'int', default: 0 })
-  stockQty: number;
+  stock_qty: number;
 
   @Column({ type: 'numeric', nullable: true })
-  salePrice: number;
+  sale_price: number;
 
   @Column({
     type: 'enum',
@@ -78,31 +78,31 @@ export class Product extends BaseEntity {
   };
 
   @Column({ nullable: true })
-  metaTitle: string;
+  meta_title: string;
 
   @Column({ nullable: true })
-  metaDescription: string;
+  meta_description: string;
 
   //  RELATIONS
 
   @ManyToOne(() => Category, (category) => category.products)
-  @JoinColumn({ name: 'categoryId' })
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
   @Column({ nullable: true })
-  categoryId: string;
+  category_id: string;
 
   @ManyToOne(() => User, (user) => user.products, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
   @Column()
-  userId: string;
+  user_id: string;
 
   @OneToMany(() => Favorite, (favorite) => favorite.product)
   favorites: Favorite[];
 
   @OneToMany(() => CartItem, (cartItem) => cartItem.product)
-  cartItems: CartItem[];
+  cart_items: CartItem[];
 }

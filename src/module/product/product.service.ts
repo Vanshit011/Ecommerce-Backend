@@ -32,9 +32,9 @@ export class ProductService {
     files: Express.Multer.File[],
     userId: string,
   ) {
-    const { categoryId, mainImageIndex = 0, ...rest } = dto;
+    const { category_id, main_image_index = 0, ...rest } = dto;
 
-    const category = await this.categoryRepo.findOneBy({ id: categoryId });
+    const category = await this.categoryRepo.findOneBy({ id: category_id });
 
     if (!category) {
       throw new BadRequestException('Invalid category selected');
@@ -46,7 +46,7 @@ export class ProductService {
 
       const product = productRepo.create({
         ...rest,
-        userId,
+        user_id: userId,
         category,
       });
 
@@ -56,10 +56,10 @@ export class ProductService {
       if (files?.length) {
         const images = files.map((file, index) =>
           imageRepo.create({
-            productId: savedProduct.id,
+            product_id: savedProduct.id,
             url: file.path,
-            imagePublicId: file.filename,
-            isMain: index === Number(mainImageIndex),
+            image_public_id: file.filename,
+            is_main: index === Number(main_image_index),
           }),
         );
 
@@ -79,7 +79,7 @@ export class ProductService {
 
     const [data, total] = await this.productRepo.findAndCount({
       where: {
-        userId,
+        user_id: userId,
       },
       relations: ['category', 'images'],
       order: {
@@ -108,7 +108,7 @@ export class ProductService {
     userId: string,
   ) {
     const product = await this.productRepo.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
       relations: ['images'],
     });
 
@@ -117,17 +117,17 @@ export class ProductService {
     }
 
     if (dto.price !== undefined) dto.price = Number(dto.price);
-    if (dto.salePrice !== undefined) dto.salePrice = Number(dto.salePrice);
-    if (dto.stockQty !== undefined) dto.stockQty = Number(dto.stockQty);
+    if (dto.sale_price !== undefined) dto.sale_price = Number(dto.sale_price);
+    if (dto.stock_qty !== undefined) dto.stock_qty = Number(dto.stock_qty);
 
-    if (dto.isActive !== undefined) {
-      const raw = dto.isActive as any;
+    if (dto.is_active !== undefined) {
+      const raw: unknown = dto.is_active;
 
-      dto.isActive = raw === true || raw === 'true' || raw === 1 || raw === '1';
+      dto.is_active =
+        raw === true || raw === 'true' || raw === 1 || raw === '1';
     }
-
     if (typeof dto.availability === 'string') {
-      dto.availability = dto.availability.toUpperCase() as any;
+      dto.availability = dto.availability.toUpperCase() as ProductStatus;
     }
 
     if (dto.sizes && typeof dto.sizes === 'string') {
@@ -151,9 +151,9 @@ export class ProductService {
     Object.assign(product, dto);
 
     // ---------- auto availability ----------
-    if (dto.stockQty !== undefined) {
+    if (dto.stock_qty !== undefined) {
       product.availability =
-        dto.stockQty === 0 ? ProductStatus.OUTOFSTOCK : ProductStatus.INSTOCK;
+        dto.stock_qty === 0 ? ProductStatus.OUTOFSTOCK : ProductStatus.INSTOCK;
     }
 
     await this.productRepo.save(product);
@@ -161,19 +161,19 @@ export class ProductService {
     // ---------- replace images if new uploaded ----------
     if (files?.length) {
       for (const img of product.images ?? []) {
-        if (img.imagePublicId) {
-          await deleteImage(img.imagePublicId);
+        if (img.image_public_id) {
+          await deleteImage(img.image_public_id);
         }
       }
 
-      await this.imageRepo.delete({ productId: id });
+      await this.imageRepo.delete({ product_id: id });
 
       const images = files.map((file, index) =>
         this.imageRepo.create({
-          productId: id,
+          product_id: id,
           url: file.path,
-          imagePublicId: file.filename,
-          isMain: index === 0,
+          image_public_id: file.filename,
+          is_main: index === 0,
         }),
       );
 
@@ -189,7 +189,7 @@ export class ProductService {
   // admin delete own product
   async delete(id: string, userId: string) {
     const product = await this.productRepo.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
       relations: ['images'],
     });
 
@@ -199,13 +199,13 @@ export class ProductService {
 
     //  delete images from cloud
     for (const img of product.images ?? []) {
-      if (img.imagePublicId) {
-        await deleteImage(img.imagePublicId);
+      if (img.image_public_id) {
+        await deleteImage(img.image_public_id);
       }
     }
 
     // delete image records
-    await this.imageRepo.delete({ productId: id });
+    await this.imageRepo.delete({ product_id: id });
 
     // soft delete product
     await this.productRepo.softDelete(id);
@@ -231,7 +231,7 @@ export class ProductService {
       .createQueryBuilder('products')
       .leftJoinAndSelect('products.category', 'category')
       .leftJoinAndSelect('products.images', 'images')
-      .where('products.isActive = :active', { active: true });
+      .where('products.is_active = :active', { active: true });
 
     //  SEARCH
     if (search) {
@@ -307,7 +307,7 @@ export class ProductService {
   //product details for users
   async getProductDetails(id: string) {
     const product = await this.productRepo.findOne({
-      where: { id, isActive: true },
+      where: { id, is_active: true },
       relations: ['category', 'images'],
     });
     return product;

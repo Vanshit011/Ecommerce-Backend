@@ -46,8 +46,8 @@ export class OrderService {
 
     const address = await this.addressRepo.findOne({
       where: {
-        user: { id: userId },
-        isdefault: true,
+        user_id: userId,
+        is_default: true,
       },
     });
 
@@ -58,13 +58,13 @@ export class OrderService {
     //  calculate from SNAPSHOT price
     let total = 0;
     for (const item of cart.items) {
-      total += Number(item.priceSnapshot) * item.quantity;
+      total += Number(item.price_snapshot) * item.quantity;
     }
 
     const order = await this.orderRepo.save({
-      userId,
-      addressId: address.id,
-      totalAmount: total,
+      user_id: userId,
+      address_id: address.id,
+      total_amount: total,
       status: Status.PENDING,
     });
 
@@ -72,16 +72,16 @@ export class OrderService {
       this.orderItemRepo.create({
         order,
         product: item.product,
-        price: item.priceSnapshot,
+        price: item.price_snapshot,
         quantity: item.quantity,
 
         //  variant info
         size: item.size,
         color: item.color,
-        variantId: item.variantId,
+        variant_id: item.variant_id,
 
         //  product snapshot
-        productSnapshot: {
+        product_snapshot: {
           name: item.product.name,
           sku: item.product.sku,
           image: item.product.images?.[0]?.url,
@@ -129,7 +129,7 @@ export class OrderService {
       if (!order) throw new NotFoundException('Order not found');
 
       const payment = await paymentRepo.findOne({
-        where: { stripePaymentIntentId: intentId },
+        where: { stripe_payment_intent_id: intentId },
       });
 
       if (!payment) throw new NotFoundException('Payment not found');
@@ -147,13 +147,13 @@ export class OrderService {
 
       //  reduce stock
       for (const item of order.items) {
-        if (item.product.stockQty < item.quantity) {
+        if (item.product.stock_qty < item.quantity) {
           throw new Error(`Stock mismatch for product ${item.product.id}`);
         }
 
         await manager
           .getRepository(item.product.constructor.name)
-          .decrement({ id: item.product.id }, 'stockQty', item.quantity);
+          .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
       }
     });
   }
@@ -161,7 +161,7 @@ export class OrderService {
   // USER ORDERS
   async getUserOrders(userId: string) {
     return this.orderRepo.find({
-      where: { userId },
+      where: { user_id: userId },
       relations: [
         'items',
         'items.product',
@@ -202,7 +202,7 @@ export class OrderService {
   // USER CANCEL HIS ORDER
   async cancelOrderByUser(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, userId },
+      where: { id: orderId, user_id: userId },
     });
 
     if (!order) {
@@ -235,7 +235,7 @@ export class OrderService {
     if (order.status === Status.CONFIRMED) {
       const payment = await this.paymentRepo.findOne({
         where: {
-          orderId: order.id,
+          order_id: order.id,
           status: 'succeeded',
         },
         order: { created_at: 'DESC' },
@@ -248,12 +248,12 @@ export class OrderService {
       const stripe = this.stripeService.getClient();
 
       const refund = await stripe.refunds.create({
-        payment_intent: payment.stripePaymentIntentId,
+        payment_intent: payment.stripe_payment_intent_id,
       });
 
       // update payment
       payment.status = 'refunded';
-      payment.refundId = refund.id;
+      payment.refund_id = refund.id;
       await this.paymentRepo.save(payment);
 
       // update order
@@ -292,7 +292,7 @@ export class OrderService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('order.address', 'address')
       .leftJoinAndSelect('order.payments', 'payment')
-      .where('product.userId = :adminId', { adminId });
+      .where('product.user_id = :adminId', { adminId });
 
     // Order status filter
     if (status?.length) {
@@ -335,7 +335,7 @@ export class OrderService {
       .leftJoin('order.items', 'item')
       .leftJoin('item.product', 'product')
       .where('order.id = :orderId', { orderId })
-      .andWhere('product.userId = :adminId', { adminId })
+      .andWhere('product.user_id = :adminId', { adminId })
       .getOne();
 
     if (!order) {

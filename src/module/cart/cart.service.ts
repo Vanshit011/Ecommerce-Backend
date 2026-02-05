@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere, IsNull } from 'typeorm';
 import { CartItem } from './entity/cart.entity';
 import { Product } from '../product/entity/product.entity';
 import { NotFoundException } from '@nestjs/common';
@@ -41,7 +41,7 @@ export class CartService {
     }
 
     //  Check stock
-    if (product.stockQty < quantity) {
+    if (product.stock_qty < quantity) {
       throw new BadRequestException('Out of stock');
     }
 
@@ -73,7 +73,7 @@ export class CartService {
       quantity,
       size,
       color,
-      priceSnapshot: product.salePrice ?? product.price,
+      price_snapshot: product.sale_price ?? product.price,
     });
 
     const saved = await this.cartRepo.save(newItem);
@@ -105,17 +105,17 @@ export class CartService {
     size?: string,
     color?: string,
   ) {
-    const where: any = {
+    const where: FindOptionsWhere<CartItem> = {
       user: { id: userId },
       product: { id: productId },
     };
 
     // If size/color is provided, match it; otherwise match null/undefined
     if (size) where.size = size;
-    else where.size = null;
+    else where.size = IsNull();
 
     if (color) where.color = color;
-    else where.color = null;
+    else where.color = IsNull();
 
     const item = await this.cartRepo.findOne({
       where,
@@ -127,7 +127,7 @@ export class CartService {
     }
 
     // Check stock for the new absolute quantity
-    if (item.product && item.product.stockQty < quantity) {
+    if (item.product && item.product.stock_qty < quantity) {
       throw new BadRequestException(
         'Requested quantity exceeds available stock',
       );
