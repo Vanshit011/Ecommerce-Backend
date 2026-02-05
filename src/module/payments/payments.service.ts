@@ -27,7 +27,7 @@ export class PaymentsService {
   // CREATE STRIPE INTENT + SAVE PAYMENT
   async createPaymentIntent(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, user_id: userId },
+      where: { id: orderId, user: { id: userId } },
     });
 
     if (!order) {
@@ -38,16 +38,39 @@ export class PaymentsService {
       throw new BadRequestException('Order cannot be paid');
     }
 
+    // CHECK IF INTENT EXISTS
+    if (order.stripe_payment_intent_id) {
+      try {
+        const stripe = this.stripeService.getClient();
+        const existingIntent = await stripe.paymentIntents.retrieve(
+          order.stripe_payment_intent_id,
+        );
+
+        if (
+          existingIntent.status === 'requires_payment_method' ||
+          existingIntent.status === 'requires_confirmation'
+        ) {
+          return {
+            clientSecret: existingIntent.client_secret,
+            payment_intent_id: existingIntent.id,
+          };
+        }
+      } catch (e) {
+        console.warn('Could not retrieve existing intent, creating new one', e);
+      }
+    }
+
     const stripe = this.stripeService.getClient();
 
     const intent = await stripe.paymentIntents.create({
       amount: Math.round(Number(order.total_amount) * 100),
       currency: 'inr',
-      automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+      automatic_payment_methods: { enabled: true, allow_redirects: 'always' },
       metadata: {
         order_id: order.id,
         user_id: userId,
       },
+      description: `Order #${order.id}`,
     });
 
     //  SAVE PAYMENT
@@ -65,7 +88,7 @@ export class PaymentsService {
     await this.orderRepo.save(order);
 
     return {
-      client_secret: intent.client_secret,
+      clientSecret: intent.client_secret,
       payment_intent_id: intent.id,
     };
   }
@@ -73,7 +96,7 @@ export class PaymentsService {
   // USER PAYMENTS
   getUserPayments(userId: string) {
     return this.paymentRepo.find({
-      where: { user_id: userId },
+      where: { user: { id: userId } },
       order: { created_at: 'DESC' },
     });
   }

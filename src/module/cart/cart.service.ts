@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, IsNull } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { CartItem } from './entity/cart.entity';
 import { Product } from '../product/entity/product.entity';
 import { NotFoundException } from '@nestjs/common';
@@ -16,28 +16,13 @@ export class CartService {
   ) {}
 
   //add cart
-  async addToCart(
-    userId: string,
-    productId: string,
-    size: string,
-    color: string,
-    quantity = 1,
-  ) {
+  async addToCart(userId: string, productId: string, quantity = 1) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
     });
 
     if (!product) {
       throw new NotFoundException('Product not found');
-    }
-
-    //  Validate selected options
-    if (size && product.sizes && !product.sizes.includes(size)) {
-      throw new BadRequestException('Invalid size selected');
-    }
-
-    if (color && product.colors && !product.colors.includes(color)) {
-      throw new BadRequestException('Invalid color selected');
     }
 
     //  Check stock
@@ -50,8 +35,6 @@ export class CartService {
       where: {
         user: { id: userId },
         product: { id: productId },
-        size,
-        color,
       },
     });
 
@@ -71,8 +54,7 @@ export class CartService {
       user: { id: userId },
       product,
       quantity,
-      size,
-      color,
+
       price_snapshot: product.sale_price ?? product.price,
     });
 
@@ -102,20 +84,11 @@ export class CartService {
     userId: string,
     productId: string,
     quantity: number,
-    size?: string,
-    color?: string,
   ) {
     const where: FindOptionsWhere<CartItem> = {
       user: { id: userId },
       product: { id: productId },
     };
-
-    // If size/color is provided, match it; otherwise match null/undefined
-    if (size) where.size = size;
-    else where.size = IsNull();
-
-    if (color) where.color = color;
-    else where.color = IsNull();
 
     const item = await this.cartRepo.findOne({
       where,
@@ -124,6 +97,15 @@ export class CartService {
 
     if (!item) {
       throw new NotFoundException('Cart item not found');
+    }
+
+    // If quantity is 0 or less, remove the item
+    if (quantity <= 0) {
+      await this.cartRepo.remove(item);
+      return {
+        message: 'Cart item removed',
+        item: null,
+      };
     }
 
     // Check stock for the new absolute quantity

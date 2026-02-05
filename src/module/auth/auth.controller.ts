@@ -22,7 +22,12 @@ export class AuthController {
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password, dto.mobile);
+    return this.authService.register(
+      dto.name,
+      dto.email,
+      dto.password,
+      dto.mobile,
+    );
   }
 
   @Post('login')

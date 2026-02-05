@@ -16,7 +16,7 @@ export class AddressService {
     //check same address current user not added
     const existingAddress = await this.repo.findOne({
       where: {
-        user_id: userId,
+        user: { id: userId },
         address_line_1: dto.address_line_1,
         address_line_2: dto.address_line_2,
         city: dto.city,
@@ -31,7 +31,7 @@ export class AddressService {
 
     const address = this.repo.create({
       ...dto,
-      user_id: userId,
+      user: { id: userId },
     });
 
     return this.repo.save(address);

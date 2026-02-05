@@ -1,11 +1,11 @@
 import { Entity, Column, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
-import { User } from '../../../module/user/entity/user.entity';
+import { User } from '../../user/entity/user.entity';
 import { OtpType } from '../../../shared/constants/enum';
 
-@Entity('password_reset_otp')
-export class PasswordResetOtp extends BaseEntity {
-  @Column()
+@Entity('otp')
+export class Otp extends BaseEntity {
+  @Column({ type: 'varchar', length: 10 })
   otp: string;
 
   @Column({
@@ -27,7 +27,7 @@ export class PasswordResetOtp extends BaseEntity {
   })
   expires_at: Date;
 
-  @ManyToOne(() => User, (user) => user.password_reset_otps, {
+  @ManyToOne(() => User, (user) => user.otps, {
     nullable: false,
     onDelete: 'CASCADE',
   })

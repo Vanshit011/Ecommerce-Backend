@@ -8,12 +8,10 @@ import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
-import { PasswordResetOtp } from './entity/password-reset-otp.entity';
+import { Otp } from './entity/otp.entity';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-// import { UserRole } from 'src/shared/constants/enum';
-import { TokenService } from './token.service';
+import { TokenService } from '../token/token.service';
 import { OtpType } from 'src/shared/constants/enum';
-import { Token } from './entity/auth.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 
@@ -26,13 +24,16 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly tokenService: TokenService,
 
-    @InjectRepository(PasswordResetOtp)
-    private readonly otpRepo: Repository<PasswordResetOtp>,
-    @InjectRepository(Token)
-    private readonly tokenRepo: Repository<Token>,
+    @InjectRepository(Otp)
+    private readonly otpRepo: Repository<Otp>,
   ) {}
 
-  async register(email: string, password: string, mobile: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    mobile: string,
+  ) {
     const existingUser = await this.usersService.findByEmail(email);
     const existingMobileUser = await this.usersService.findByMobile(mobile);
 
@@ -51,13 +52,14 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.usersService.create({
+      name,
       email,
       mobile,
       password: hashedPassword,
     });
 
     this.mailService
-      .sendWelcomeEmail(user.email, user.email)
+      .sendWelcomeEmail(user.email, user.name || user.email)
       .catch(console.error);
 
     return { success: true };
@@ -129,14 +131,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    const token = await this.tokenRepo.findOne({
-      where: { user: { id: userId } },
-    });
-
-    if (!token) return;
-
-    token.logout_at = new Date();
-    await this.tokenRepo.save(token);
+    await this.tokenService.revokeToken(userId);
   }
 
   async sendForgotPasswordOtp(dto: ForgotPasswordDto): Promise<void> {
