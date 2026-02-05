@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from './entity/address.entity';
@@ -68,12 +64,6 @@ export class AddressService {
 
   async setDefault(id: string, userId: string) {
     return this.repo.manager.transaction(async (manager) => {
-     
-      const all = await manager
-        .createQueryBuilder(Address, 'address')
-        .getMany();
-
-
       const address = await manager
         .createQueryBuilder(Address, 'address')
         .where('address.id = :id', { id })

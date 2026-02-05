@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Param,
-  Get,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Param, Get, UseGuards } from '@nestjs/common';
 
 import { PaymentsService } from './payments.service';
 import { AuthGuard } from '../../core/guard/auth.guard';
@@ -22,10 +15,7 @@ export class PaymentsController {
   @Post('order/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  payForOrder(
-    @Param('id') orderId: string,
-    @GetUser('id') userId: string,
-  ) {
+  payForOrder(@Param('id') orderId: string, @GetUser('id') userId: string) {
     return this.paymentsService.createPaymentIntent(orderId, userId);
   }
 
@@ -36,5 +26,4 @@ export class PaymentsController {
   myPayments(@GetUser('id') userId: string) {
     return this.paymentsService.getUserPayments(userId);
   }
-
 }

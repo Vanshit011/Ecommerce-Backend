@@ -9,7 +9,7 @@ import { ProductImage } from './entity/product_images.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product,ProductImage,Category]),
+    TypeOrmModule.forFeature([Product, ProductImage, Category]),
     AuthModule,
     Category,
   ],

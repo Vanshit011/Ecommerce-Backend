@@ -219,8 +219,8 @@ export class ProductService {
 
   // USER see all products
   async findAllForUsers(query: ProductQueryParams) {
-    let { page, limit, skip, search, categories, minPrice, maxPrice, sort } =
-      query;
+    let { page, limit, skip } = query;
+    const { search, categories, minPrice, maxPrice, sort } = query;
 
     page = page || 1;
     limit = limit || 10;

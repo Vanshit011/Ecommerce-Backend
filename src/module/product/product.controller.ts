@@ -4,7 +4,6 @@ import {
   Get,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
   Body,
   Put,
   Param,
@@ -12,7 +11,7 @@ import {
   UploadedFiles,
   Query,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AuthGuard } from '../../core/guard/auth.guard';
@@ -31,7 +30,7 @@ import type {
 export class ProductController {
   constructor(private productService: ProductService) {}
 
-// ----------------ADMIN------------------//
+  // ----------------ADMIN------------------//
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -91,7 +90,7 @@ export class ProductController {
     return this.productService.delete(id, userId);
   }
 
-// ----------------USER------------------//
+  // ----------------USER------------------//
 
   //user Prodcuts with pagination
   @Get()

@@ -7,11 +7,9 @@ import { FavoriteController } from './favorite.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Favorite, Product]),
-    AuthModule
-  ],
+  imports: [TypeOrmModule.forFeature([Favorite, Product]), AuthModule],
   controllers: [FavoriteController],
   providers: [FavoriteService],
   exports: [FavoriteService],
 })
-export class FavoriteModule { }
+export class FavoriteModule {}

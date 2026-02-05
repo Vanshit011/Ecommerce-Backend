@@ -18,4 +18,3 @@ export const typeOrmConfig = (): TypeOrmModuleOptions => ({
 
 const config = typeOrmConfig() as DataSourceOptions;
 export default new DataSource(config);
-

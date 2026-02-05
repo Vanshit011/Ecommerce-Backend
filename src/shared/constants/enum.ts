@@ -21,4 +21,3 @@ export enum ProductStatus {
   OUTOFSTOCK = 'OUTOFSTOCK',
   PREORDER = 'PREORDER',
 }
-

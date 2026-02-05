@@ -44,7 +44,7 @@ export class User extends BaseEntity {
   favorites: Favorite[];
 
   @OneToMany(() => CartItem, (cartItem) => cartItem.user)
-  cartItems: CartItem[];
+  cart_items: CartItem[];
 
   @OneToMany(() => Address, (address) => address.user)
   address: Address[];

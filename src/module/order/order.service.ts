@@ -273,7 +273,8 @@ export class OrderService {
 
   // ADMIN ORDER LIST
   async getOrdersForAdmin(adminId: string, params: AdminOrderQueryParams) {
-    let { page, limit, status, paymentStatus } = params;
+    let { page, limit } = params;
+    const { status, paymentStatus } = params;
 
     // defaults
     page = page || 1;

@@ -5,7 +5,6 @@ import {
   TreeParent,
   TreeChildren,
   Tree,
-  TreeLevelColumn,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Product } from '../../product/entity/product.entity';
