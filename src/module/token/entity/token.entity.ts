@@ -5,7 +5,7 @@ import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('tokens')
 export class Token extends BaseEntity {
-  @Column()
+  @Column({ type: 'text', nullable: true })
   token: string;
 
   @Column({

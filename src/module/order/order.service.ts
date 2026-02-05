@@ -46,7 +46,7 @@ export class OrderService {
 
     const address = await this.addressRepo.findOne({
       where: {
-        user_id: userId,
+        user: { id: userId },
         is_default: true,
       },
     });
@@ -161,7 +161,7 @@ export class OrderService {
   // USER ORDERS
   async getUserOrders(userId: string) {
     return this.orderRepo.find({
-      where: { user_id: userId },
+      where: { user: { id: userId } },
       relations: [
         'items',
         'items.product',
@@ -196,13 +196,32 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
+    // POLLING FALLBACK: If Pending but looks paid, check Stripe
+    if (order.status === Status.PENDING && order.stripe_payment_intent_id) {
+      try {
+        const stripe = this.stripeService.getClient();
+        const intent = await stripe.paymentIntents.retrieve(
+          order.stripe_payment_intent_id,
+        );
+
+        if (intent.status === 'succeeded') {
+          await this.handlePaymentSuccess(order.id, intent.id);
+
+          // Return updated status
+          order.status = Status.CONFIRMED;
+        }
+      } catch (err) {
+        console.error('Error polling Stripe status:', err);
+      }
+    }
+
     return order;
   }
 
   // USER CANCEL HIS ORDER
   async cancelOrderByUser(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, user_id: userId },
+      where: { id: orderId, user: { id: userId } },
     });
 
     if (!order) {
@@ -235,7 +254,7 @@ export class OrderService {
     if (order.status === Status.CONFIRMED) {
       const payment = await this.paymentRepo.findOne({
         where: {
-          order_id: order.id,
+          order: { id: order.id },
           status: 'succeeded',
         },
         order: { created_at: 'DESC' },

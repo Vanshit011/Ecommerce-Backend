@@ -39,7 +39,7 @@ export class WebhookController {
     const intent = event.data.object as Stripe.PaymentIntent;
 
     const getOrderIdFromStripe = (obj: Stripe.PaymentIntent) =>
-      obj?.metadata?.orderId || null;
+      obj?.metadata?.order_id || null;
 
     try {
       switch (event.type) {
@@ -49,15 +49,31 @@ export class WebhookController {
 
           if (orderId) {
             await this.orderService.handlePaymentSuccess(orderId, intentId);
+          } else {
+            console.error(
+              `❌ Webhook Error: Order ID missing in metadata for intent ${intentId}`,
+            );
           }
 
           break;
         }
 
+        case 'payment_intent.created':
+        case 'payment_intent.processing':
+          break;
+
         case 'payment_intent.payment_failed':
         case 'payment_intent.canceled': {
           const intentId = intent.id;
           const orderId = getOrderIdFromStripe(intent);
+
+          console.error(
+            `❌ Webhook: Payment FAILED or CANCELED (Intent: ${intentId})`,
+          );
+          console.error(`   - Status: ${intent.status}`);
+          if (intent.last_payment_error) {
+            console.error(`   - Error: ${intent.last_payment_error.message}`);
+          }
 
           if (orderId) {
             await this.orderService.markFailedByOrderId(orderId);
@@ -69,8 +85,8 @@ export class WebhookController {
 
         default:
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error(`❌ Webhook Error processing ${event.type}:`, err);
     }
 
     return { received: true };

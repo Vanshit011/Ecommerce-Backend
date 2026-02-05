@@ -22,7 +22,12 @@ export class AuthGuard implements CanActivate {
 
     try {
       const decoded = this.jwtService.verify(token);
-      request.user = decoded;
+      // Map JWT payload to user object format
+      request.user = {
+        id: decoded.sub, // Map 'sub' to 'id'
+        role: decoded.role,
+        email: decoded.email, // Include if available
+      };
       return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');

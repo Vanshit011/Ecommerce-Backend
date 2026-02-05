@@ -9,30 +9,25 @@ export class Payment extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id', type: 'uuid' })
-  user_id: string;
-
   @ManyToOne(() => Order, (order) => order.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
   order: Order;
-  @Column({ name: 'order_id', type: 'uuid' })
-  order_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255, nullable: true })
   stripe_payment_intent_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 50, nullable: true })
   status: string;
 
-  @Column('decimal')
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 10, nullable: true })
   currency: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   method: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   refund_id: string;
 }

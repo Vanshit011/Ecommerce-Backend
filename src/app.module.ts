@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { typeOrmConfig } from './config/typeorm.config';
 import { UsersModule } from './module/user/user.module';
 import { AuthModule } from './module/auth/auth.module';
@@ -16,6 +17,8 @@ import { OrderModule } from './module/order/order.module';
 import { WebhookModule } from './module/webhook/webhook.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PaymentsModule } from './module/payments/payments.module';
+import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
+
 @Module({
   imports: [
     StripeModule,
@@ -37,6 +40,12 @@ import { PaymentsModule } from './module/payments/payments.module';
     AddressModule,
     OrderModule,
     PaymentsModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ErrorLoggingInterceptor,
+    },
   ],
 })
 export class AppModule {}

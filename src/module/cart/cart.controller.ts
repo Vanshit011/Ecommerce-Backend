@@ -20,15 +20,9 @@ export class CartController {
   add(
     @Param('productId') productId: string,
     @GetUser('id') userId: string,
-    @Body() body: AddToCartDto,
+    @Body() body: AddToCartDto = {} as AddToCartDto,
   ) {
-    return this.cartService.addToCart(
-      userId,
-      productId,
-      body.size,
-      body.color,
-      body.quantity,
-    );
+    return this.cartService.addToCart(userId, productId, body.quantity);
   }
 
   // get cart

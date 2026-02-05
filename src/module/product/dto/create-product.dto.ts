@@ -40,12 +40,6 @@ export class CreateProductDto {
   category_id: string;
 
   @IsOptional()
-  sizes?: string[];
-
-  @IsOptional()
-  colors?: string[];
-
-  @IsOptional()
   tags?: string[];
 
   @IsOptional()
@@ -53,19 +47,6 @@ export class CreateProductDto {
 
   @IsOptional()
   weight?: number;
-
-  @IsOptional()
-  dimensions?: {
-    length: number;
-    width: number;
-    height: number;
-  };
-
-  @IsOptional()
-  meta_title?: string;
-
-  @IsOptional()
-  meta_description?: string;
 
   @IsOptional()
   @IsInt()

@@ -7,7 +7,7 @@ export const GetUser = createParamDecorator(
     const user = request.user;
 
     if (data === 'id') {
-      return user?.id || user?.sub || user?.userId;
+      return user?.id || user?.sub || user?.user_id;
     }
 
     return data ? user?.[data] : user;

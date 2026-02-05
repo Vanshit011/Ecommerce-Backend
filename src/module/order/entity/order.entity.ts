@@ -11,14 +11,10 @@ export class Order extends BaseEntity {
   @ManyToOne(() => User, (user) => user.order, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
-  @Column({ name: 'user_id', type: 'uuid' })
-  user_id: string;
 
   @ManyToOne(() => Address, (address) => address.order, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_id' })
   address: Address;
-  @Column({ name: 'address_id', type: 'uuid' })
-  address_id: string;
 
   @OneToMany(() => OrderItem, (item) => item.order)
   items: OrderItem[];
@@ -33,7 +29,7 @@ export class Order extends BaseEntity {
   })
   status: Status;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   stripe_payment_intent_id: string;
 
   @OneToMany(() => Payment, (payment) => payment.order)

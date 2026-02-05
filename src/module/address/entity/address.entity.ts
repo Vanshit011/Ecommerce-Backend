@@ -32,8 +32,6 @@ export class Address extends BaseEntity {
   @ManyToOne(() => User, (user) => user.address, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
-  @Column()
-  user_id: string;
 
   @OneToMany(() => Order, (order) => order.address)
   order: Order[];

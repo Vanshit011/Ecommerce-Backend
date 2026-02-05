@@ -5,34 +5,26 @@ import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('cart_items')
 export class CartItem extends BaseEntity {
-  @ManyToOne(() => User, (user) => user.cart_items, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => User, (user) => user.cart_items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
-  @Column({ name: 'user_id', type: 'uuid' })
-  user_id: string;
 
-  @ManyToOne(() => Product, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => Product, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;
-  @Column({ name: 'product_id', type: 'uuid' })
-  product_id: string;
 
-  @Column({ default: 1 })
+  @Column({ type: 'int', default: 1 })
   quantity: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   size: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   color: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   variant_id: string;
 
-  @Column({ type: 'numeric' })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   price_snapshot: number;
 }

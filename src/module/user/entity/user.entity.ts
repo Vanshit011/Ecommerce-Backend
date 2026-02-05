@@ -1,6 +1,6 @@
 import { Column, OneToMany, Entity } from 'typeorm';
-import { Token } from '../../../module/auth/entity/auth.entity';
-import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
+import { Token } from '../../../module/token/entity/token.entity';
+import { Otp } from '../../auth/entity/otp.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { UserRole } from '../../../shared/constants/enum';
 import { Product } from '../../../module/product/entity/product.entity';
@@ -12,13 +12,16 @@ import { Payment } from '../../payments/entity/payments.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
-  @Column({ unique: true })
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
+  name: string;
+
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
   email: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255, nullable: true })
   password: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
   mobile: string;
 
   @Column({
@@ -31,11 +34,8 @@ export class User extends BaseEntity {
   @OneToMany(() => Token, (token) => token.user)
   tokens: Token[];
 
-  @OneToMany(
-    () => PasswordResetOtp,
-    (passwordResetOtp) => passwordResetOtp.user,
-  )
-  password_reset_otps: PasswordResetOtp[];
+  @OneToMany(() => Otp, (otp) => otp.user)
+  otps: Otp[];
 
   @OneToMany(() => Product, (product) => product.user)
   products: Product[];

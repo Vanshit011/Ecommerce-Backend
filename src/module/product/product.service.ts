@@ -46,7 +46,7 @@ export class ProductService {
 
       const product = productRepo.create({
         ...rest,
-        user_id: userId,
+        user: { id: userId },
         category,
       });
 
@@ -56,7 +56,7 @@ export class ProductService {
       if (files?.length) {
         const images = files.map((file, index) =>
           imageRepo.create({
-            product_id: savedProduct.id,
+            product: { id: savedProduct.id },
             url: file.path,
             image_public_id: file.filename,
             is_main: index === Number(main_image_index),
@@ -79,7 +79,7 @@ export class ProductService {
 
     const [data, total] = await this.productRepo.findAndCount({
       where: {
-        user_id: userId,
+        user: { id: userId },
       },
       relations: ['category', 'images'],
       order: {
@@ -108,7 +108,7 @@ export class ProductService {
     userId: string,
   ) {
     const product = await this.productRepo.findOne({
-      where: { id, user_id: userId },
+      where: { id, user: { id: userId } },
       relations: ['images'],
     });
 
@@ -130,24 +130,6 @@ export class ProductService {
       dto.availability = dto.availability.toUpperCase() as ProductStatus;
     }
 
-    if (dto.sizes && typeof dto.sizes === 'string') {
-      dto.sizes = (dto.sizes as unknown as string)
-        .split(',')
-        .map((v) => v.trim());
-    }
-
-    if (dto.colors && typeof dto.colors === 'string') {
-      dto.colors = (dto.colors as unknown as string)
-        .split(',')
-        .map((v) => v.trim());
-    }
-
-    if (dto.tags && typeof dto.tags === 'string') {
-      dto.tags = (dto.tags as unknown as string)
-        .split(',')
-        .map((v) => v.trim());
-    }
-
     Object.assign(product, dto);
 
     // ---------- auto availability ----------
@@ -166,11 +148,11 @@ export class ProductService {
         }
       }
 
-      await this.imageRepo.delete({ product_id: id });
+      await this.imageRepo.delete({ product: { id } });
 
       const images = files.map((file, index) =>
         this.imageRepo.create({
-          product_id: id,
+          product: { id },
           url: file.path,
           image_public_id: file.filename,
           is_main: index === 0,
@@ -189,7 +171,7 @@ export class ProductService {
   // admin delete own product
   async delete(id: string, userId: string) {
     const product = await this.productRepo.findOne({
-      where: { id, user_id: userId },
+      where: { id, user: { id: userId } },
       relations: ['images'],
     });
 
@@ -205,7 +187,7 @@ export class ProductService {
     }
 
     // delete image records
-    await this.imageRepo.delete({ product_id: id });
+    await this.imageRepo.delete({ product: { id } });
 
     // soft delete product
     await this.productRepo.softDelete(id);
