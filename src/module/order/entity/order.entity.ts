@@ -1,0 +1,41 @@
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../shared/entities/base.entity';
+import { Status } from '../../../shared/constants/enum';
+import { User } from '../../user/entity/user.entity';
+import { Address } from '../../address/entity/address.entity';
+import { OrderItem } from './order-item.entity';
+import { Payment } from '../../payments/entity/payments.entity';
+
+@Entity('orders')
+export class Order extends BaseEntity {
+  @ManyToOne(() => User, (user) => user.order, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+  @Column({ name: 'user_id', type: 'uuid' })
+  user_id: string;
+
+  @ManyToOne(() => Address, (address) => address.order, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'address_id' })
+  address: Address;
+  @Column({ name: 'address_id', type: 'uuid' })
+  address_id: string;
+
+  @OneToMany(() => OrderItem, (item) => item.order)
+  items: OrderItem[];
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  total_amount: number;
+
+  @Column({
+    type: 'enum',
+    enum: Status,
+    default: Status.PENDING,
+  })
+  status: Status;
+
+  @Column({ nullable: true })
+  stripe_payment_intent_id: string;
+
+  @OneToMany(() => Payment, (payment) => payment.order)
+  payments: Payment[];
+}

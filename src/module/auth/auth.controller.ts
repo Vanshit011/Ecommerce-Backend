@@ -1,30 +1,49 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-
+import { AuthGuard } from '../../core/guard/auth.guard';
+import { RolesGuard } from '../../core/guard/roles.guard';
+import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
+import type { RequestWithUser } from '../../shared/constants/types';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password);
+    return this.authService.register(dto.email, dto.password, dto.mobile);
   }
 
   @Post('login')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password, dto.mobile, dto.otp);
   }
 
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    await this.authService.sendForgotPasswordOtp(dto.email);
+    await this.authService.sendForgotPasswordOtp(dto);
     return {
-      message: 'OTP sent to your email',
+      message: 'OTP send successfully',
+    };
+  }
+
+  @Post('verify-forgot-otp')
+  async verifyForgotOtp(@Body() dto: VerifyForgotOtpDto) {
+    await this.authService.verifyForgotPasswordOtp(dto);
+
+    return {
+      message: 'OTP verified successfully',
     };
   }
 
@@ -36,4 +55,18 @@ export class AuthController {
     };
   }
 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Post('logout')
+  async logout(@Req() req: RequestWithUser) {
+    if (!req.user) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const userId = req.user.id;
+    await this.authService.logout(userId);
+
+    return {
+      message: 'Logged out successfully',
+    };
+  }
 }

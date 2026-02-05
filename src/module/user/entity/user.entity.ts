@@ -1,38 +1,58 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
-import { Token } from 'src/module/auth/entity/auth.entity';
-
-export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
-}
+import { Column, OneToMany, Entity } from 'typeorm';
+import { Token } from '../../../module/auth/entity/auth.entity';
+import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
+import { BaseEntity } from '../../../shared/entities/base.entity';
+import { UserRole } from '../../../shared/constants/enum';
+import { Product } from '../../../module/product/entity/product.entity';
+import { Favorite } from '../../../module/favorite/entity/favorite.entity';
+import { CartItem } from '../../../module/cart/entity/cart.entity';
+import { Address } from '../../address/entity/address.entity';
+import { Order } from '../../order/entity/order.entity';
+import { Payment } from '../../payments/entity/payments.entity';
 
 @Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class User extends BaseEntity {
   @Column({ unique: true })
   email: string;
 
   @Column()
   password: string;
 
-  @Column({ default: UserRole.USER })
+  @Column({ unique: true, nullable: true })
+  mobile: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
   role: UserRole;
 
   @OneToMany(() => Token, (token) => token.user)
   tokens: Token[];
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @OneToMany(
+    () => PasswordResetOtp,
+    (passwordResetOtp) => passwordResetOtp.user,
+  )
+  password_reset_otps: PasswordResetOtp[];
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+
+  @OneToMany(() => Favorite, (favorite) => favorite.user)
+  favorites: Favorite[];
+
+  @OneToMany(() => CartItem, (cartItem) => cartItem.user)
+  cart_items: CartItem[];
+
+  @OneToMany(() => Address, (address) => address.user)
+  address: Address[];
+
+  @OneToMany(() => Order, (order) => order.user)
+  order: Order[];
+
+  @OneToMany(() => Payment, (payment) => payment.user)
+  payments: Payment[];
 }
+export { UserRole };
