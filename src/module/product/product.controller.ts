@@ -10,15 +10,21 @@ import {
   Delete,
   UploadedFiles,
   Query,
+  UsePipes,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
+import {
+  createProductSchema,
+  updateProductSchema,
+} from './joi/product.validation';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { Roles } from '../../core/decorator/roles.decorator';
 import { UserRole } from '../../shared/constants/enum';
-import { cloudinaryStorage } from '../../core/utils/cloudinary-storage';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { ProductQuery } from 'src/core/decorator/product-query.decorator';
 import type {
@@ -36,12 +42,12 @@ export class ProductController {
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
     FilesInterceptor('images', 8, {
-      storage: cloudinaryStorage,
       limits: {
         fileSize: 2 * 1024 * 1024,
       },
     }),
   )
+  @UsePipes(new JoiValidationPipe(createProductSchema))
   async create(
     @Body() dto: CreateProductDto,
     @UploadedFiles() files: Express.Multer.File[],
@@ -67,12 +73,12 @@ export class ProductController {
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
     FilesInterceptor('images', 8, {
-      storage: cloudinaryStorage,
       limits: {
         fileSize: 2 * 1024 * 1024,
       },
     }),
   )
+  @UsePipes(new JoiValidationPipe(updateProductSchema))
   update(
     @Param('id') id: string,
     @Body() dto: Partial<CreateProductDto>,
@@ -94,6 +100,8 @@ export class ProductController {
 
   //user Prodcuts with pagination
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300) // 5 minutes
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER, UserRole.ADMIN)
   findAll(@ProductQuery() query: ProductQueryParams) {

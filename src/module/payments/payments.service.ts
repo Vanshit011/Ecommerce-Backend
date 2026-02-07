@@ -11,6 +11,7 @@ import { Payment } from './entity/payments.entity';
 import { Order } from '../order/entity/order.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { Status } from '../../shared/constants/enum';
+import { OrderService } from '../order/order.service';
 
 @Injectable()
 export class PaymentsService {
@@ -22,16 +23,31 @@ export class PaymentsService {
     private orderRepo: Repository<Order>,
 
     private stripeService: StripeService,
+    private orderService: OrderService,
   ) {}
 
   // CREATE STRIPE INTENT + SAVE PAYMENT
   async createPaymentIntent(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, user: { id: userId } },
+      where: { id: orderId },
+      relations: ['user'],
     });
 
     if (!order) {
+      console.error(`Order ${orderId} not found in DB`);
       throw new NotFoundException('Order not found');
+    }
+
+    if (!order.user) {
+      console.error(`Order ${orderId} has no assigned user`);
+      throw new BadRequestException('Invalid order: No user assigned');
+    }
+
+    if (order.user.id !== userId) {
+      console.error(
+        `Order ownership mismatch. OrderUser: ${order.user.id}, RequestUser: ${userId}`,
+      );
+      throw new NotFoundException('Order not found or access denied');
     }
 
     if (order.status !== Status.PENDING) {
@@ -45,6 +61,21 @@ export class PaymentsService {
         const existingIntent = await stripe.paymentIntents.retrieve(
           order.stripe_payment_intent_id,
         );
+
+        if (existingIntent.status === 'succeeded') {
+          console.log(
+            `Payment already succeeded for order ${orderId}. Confirming order internally.`,
+          );
+          await this.orderService.handlePaymentSuccess(
+            order.id,
+            existingIntent.id,
+          );
+          return {
+            clientSecret: existingIntent.client_secret,
+            payment_intent_id: existingIntent.id,
+            status: 'succeeded',
+          };
+        }
 
         if (
           existingIntent.status === 'requires_payment_method' ||
@@ -75,8 +106,8 @@ export class PaymentsService {
 
     //  SAVE PAYMENT
     await this.paymentRepo.save({
-      user_id: userId,
-      order_id: order.id,
+      user: { id: userId },
+      order: { id: order.id },
       stripe_payment_intent_id: intent.id,
       amount: Number(order.total_amount),
       currency: 'inr',

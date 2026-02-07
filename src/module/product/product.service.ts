@@ -11,7 +11,7 @@ import { Category } from '../categories/entity/category.entity';
 import { ProductImage } from './entity/product_images.entity';
 import { ProductStatus } from '../../shared/constants/enum';
 import type { ProductQueryParams } from '../../shared/constants/types';
-import { deleteImage } from 'src/core/utils/cloudinary.helper';
+import { deleteImage, uploadImage } from 'src/core/utils/cloudinary.helper';
 
 @Injectable()
 export class ProductService {
@@ -40,37 +40,44 @@ export class ProductService {
       throw new BadRequestException('Invalid category selected');
     }
 
-    return this.productRepo.manager.transaction(async (manager) => {
-      const productRepo = manager.getRepository(Product);
-      const imageRepo = manager.getRepository(ProductImage);
+    return this.productRepo.manager
+      .transaction(async (manager) => {
+        const productRepo = manager.getRepository(Product);
+        const imageRepo = manager.getRepository(ProductImage);
 
-      const product = productRepo.create({
-        ...rest,
-        user: { id: userId },
-        category,
+        const product = productRepo.create({
+          ...rest,
+          user: { id: userId },
+          category,
+        });
+
+        const savedProduct = await productRepo.save(product);
+
+        if (files?.length) {
+          const uploadResults = await Promise.all(
+            files.map((file) => uploadImage(file.buffer, 'ecommerce/products')),
+          );
+
+          const images = uploadResults.map((result, index) =>
+            imageRepo.create({
+              product: { id: savedProduct.id },
+              url: result.url,
+              image_public_id: result.publicId,
+              is_main: index === Number(main_image_index),
+            }),
+          );
+
+          await imageRepo.save(images);
+        }
+
+        return productRepo.findOne({
+          where: { id: savedProduct.id },
+          relations: ['images', 'category'],
+        });
+      })
+      .finally(() => {
+        console.timeEnd('TOTAL_CREATE_PRODUCT');
       });
-
-      const savedProduct = await productRepo.save(product);
-
-      // STORE images
-      if (files?.length) {
-        const images = files.map((file, index) =>
-          imageRepo.create({
-            product: { id: savedProduct.id },
-            url: file.path,
-            image_public_id: file.filename,
-            is_main: index === Number(main_image_index),
-          }),
-        );
-
-        await imageRepo.save(images);
-      }
-
-      return productRepo.findOne({
-        where: { id: savedProduct.id },
-        relations: ['images', 'category'],
-      });
-    });
   }
 
   // admin see only own products
@@ -150,11 +157,15 @@ export class ProductService {
 
       await this.imageRepo.delete({ product: { id } });
 
-      const images = files.map((file, index) =>
+      const uploadResults = await Promise.all(
+        files.map((file) => uploadImage(file.buffer, 'ecommerce/products')),
+      );
+
+      const images = uploadResults.map((result, index) =>
         this.imageRepo.create({
           product: { id },
-          url: file.path,
-          image_public_id: file.filename,
+          url: result.url,
+          image_public_id: result.publicId,
           is_main: index === 0,
         }),
       );

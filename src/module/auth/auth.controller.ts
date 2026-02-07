@@ -5,6 +5,7 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -14,6 +15,14 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
+import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  verifyForgotOtpSchema,
+  resetPasswordSchema,
+} from './joi/auth.validation';
 import type { RequestWithUser } from '../../shared/constants/types';
 
 @Controller('auth')
@@ -21,6 +30,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
+  @UsePipes(new JoiValidationPipe(registerSchema))
   register(@Body() dto: RegisterDto) {
     return this.authService.register(
       dto.name,
@@ -31,11 +41,13 @@ export class AuthController {
   }
 
   @Post('login')
+  @UsePipes(new JoiValidationPipe(loginSchema))
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password, dto.mobile, dto.otp);
   }
 
   @Post('forgot-password')
+  @UsePipes(new JoiValidationPipe(forgotPasswordSchema))
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.sendForgotPasswordOtp(dto);
     return {
@@ -44,6 +56,7 @@ export class AuthController {
   }
 
   @Post('verify-forgot-otp')
+  @UsePipes(new JoiValidationPipe(verifyForgotOtpSchema))
   async verifyForgotOtp(@Body() dto: VerifyForgotOtpDto) {
     await this.authService.verifyForgotPasswordOtp(dto);
 
@@ -53,6 +66,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @UsePipes(new JoiValidationPipe(resetPasswordSchema))
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto);
     return {
