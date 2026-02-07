@@ -11,7 +11,7 @@ import { GetUser } from '../../core/decorator/get-user.decorator';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // USER → PAY ORDER
+  // USER PAY ORDER
   @Post('order/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
@@ -19,7 +19,7 @@ export class PaymentsController {
     return this.paymentsService.createPaymentIntent(orderId, userId);
   }
 
-  // USER → MY PAYMENTS
+  // USER MY PAYMENTS
   @Get('my')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)

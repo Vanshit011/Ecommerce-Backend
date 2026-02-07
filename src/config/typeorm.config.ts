@@ -14,6 +14,9 @@ export const typeOrmConfig = (): TypeOrmModuleOptions => ({
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false, // do not use in production
+  extra: {
+    max: 20, // restricted to 20 connections
+  },
 });
 
 const config = typeOrmConfig() as DataSourceOptions;

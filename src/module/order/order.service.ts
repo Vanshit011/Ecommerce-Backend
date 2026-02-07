@@ -15,6 +15,8 @@ import { Address } from '../address/entity/address.entity';
 import { AdminOrderQueryParams } from '../../shared/constants/types';
 import { Payment } from '../payments/entity/payments.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
+import { Product } from '../product/entity/product.entity';
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -62,8 +64,8 @@ export class OrderService {
     }
 
     const order = await this.orderRepo.save({
-      user_id: userId,
-      address_id: address.id,
+      user: { id: userId },
+      address: { id: address.id },
       total_amount: total,
       status: Status.PENDING,
     });
@@ -91,8 +93,8 @@ export class OrderService {
 
     await this.orderItemRepo.save(orderItems);
 
-    //  clear cart after order
-    await this.cartService.clearCart(userId);
+    //  clear cart after payment success, not here.
+    // await this.cartService.clearCart(userId);
 
     return order;
   }
@@ -120,6 +122,7 @@ export class OrderService {
       const order = await orderRepo.findOne({
         where: { id: orderId },
         relations: {
+          user: true,
           items: {
             product: true,
           },
@@ -145,6 +148,11 @@ export class OrderService {
       order.status = Status.CONFIRMED;
       await orderRepo.save(order);
 
+      //  clear cart after payment success
+      if (order.user?.id) {
+        await this.cartService.clearCart(order.user.id);
+      }
+
       //  reduce stock
       for (const item of order.items) {
         if (item.product.stock_qty < item.quantity) {
@@ -152,7 +160,7 @@ export class OrderService {
         }
 
         await manager
-          .getRepository(item.product.constructor.name)
+          .getRepository(Product)
           .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
       }
     });

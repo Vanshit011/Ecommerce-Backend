@@ -6,12 +6,14 @@ import { Order } from '../order/entity/order.entity';
 import { AuthModule } from '../auth/auth.module';
 import { StripeModule } from 'src/core/stripe/stripe.module';
 import { PaymentsController } from './payments.controller';
+import { OrderModule } from '../order/order.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, Order]),
     AuthModule,
     StripeModule,
+    OrderModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

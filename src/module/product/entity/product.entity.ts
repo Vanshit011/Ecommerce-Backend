@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../../module/user/entity/user.entity';
 import { Category } from '../../categories/entity/category.entity';
@@ -8,34 +15,41 @@ import { ProductStatus } from '../../../shared/constants/enum';
 import { ProductImage } from './product_images.entity';
 
 @Entity('products')
+@Index(['created_at'])
 export class Product extends BaseEntity {
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'text' })
   description: string;
 
+  @Index()
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
   @OneToMany(() => ProductImage, (img) => img.product)
   images: ProductImage[];
 
+  @Index()
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
   @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
   sku: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 100, nullable: true })
   brand: string;
 
+  @Index()
   @Column({ type: 'int', default: 0 })
   stock_qty: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   sale_price: number;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: ProductStatus,

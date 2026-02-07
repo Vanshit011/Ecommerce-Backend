@@ -1,8 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import * as redisStore from 'cache-manager-redis-store';
 import { typeOrmConfig } from './config/typeorm.config';
+import { throttlerConfig } from './config/throttler.config';
+import { validationSchema } from './config/env.validation';
 import { UsersModule } from './module/user/user.module';
 import { AuthModule } from './module/auth/auth.module';
 import { MailModule } from './module/mail/mail.module';
@@ -17,18 +22,30 @@ import { OrderModule } from './module/order/order.module';
 import { WebhookModule } from './module/webhook/webhook.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PaymentsModule } from './module/payments/payments.module';
+import { SeederModule } from './module/seeder/seeder.module';
 import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
-    StripeModule,
-    WebhookModule,
     ScheduleModule.forRoot(),
-    ConfigModule.forRoot({ isGlobal: true }),
+    CacheModule.register({
+      isGlobal: true,
+      store: redisStore,
+      host: 'localhost',
+      port: 6379,
+    }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema,
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: typeOrmConfig,
     }),
+    StripeModule,
+    WebhookModule,
+    HealthModule,
     UsersModule,
     AuthModule,
     MailModule,
@@ -40,11 +57,17 @@ import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interc
     AddressModule,
     OrderModule,
     PaymentsModule,
+    SeederModule,
+    ThrottlerModule.forRoot(throttlerConfig),
   ],
   providers: [
     {
       provide: APP_INTERCEPTOR,
       useClass: ErrorLoggingInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

@@ -5,7 +5,7 @@ import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('tokens')
 export class Token extends BaseEntity {
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text' })
   token: string;
 
   @Column({
@@ -20,7 +20,7 @@ export class Token extends BaseEntity {
   })
   logout_at: Date | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp' })
   expires_at: Date;
 
   @ManyToOne(() => User, (user) => user.tokens, { onDelete: 'CASCADE' })
