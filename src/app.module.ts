@@ -25,7 +25,7 @@ import { PaymentsModule } from './module/payments/payments.module';
 import { SeederModule } from './module/seeder/seeder.module';
 import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
 import { HealthModule } from './health/health.module';
-
+import { RedisModule } from './core/redis/redis.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -43,6 +43,7 @@ import { HealthModule } from './health/health.module';
       inject: [ConfigService],
       useFactory: typeOrmConfig,
     }),
+    RedisModule,
     StripeModule,
     WebhookModule,
     HealthModule,
