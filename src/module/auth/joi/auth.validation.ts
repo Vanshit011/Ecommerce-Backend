@@ -37,11 +37,11 @@ export const loginSchema = Joi.object({
   });
 
 export const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required(),
-});
+  email: Joi.string().email().optional(),
+  mobile: Joi.string().optional(),
+}).or('email', 'mobile');
 
 export const resetPasswordSchema = Joi.object({
-  otp: Joi.string().required(),
   newPassword: Joi.string().min(6).required(),
 });
 

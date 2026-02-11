@@ -7,6 +7,7 @@ import {
   Query,
   Patch,
   Body,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { GetUser } from './../../core/decorator/get-user.decorator';
 import { AuthGuard } from '../../core/guard/auth.guard';
@@ -62,8 +63,12 @@ export class OrderController {
     const params: AdminOrderQueryParams = {
       page: Number(query.page) || 1,
       limit: Number(query.limit) || 10,
-      status: query.status?.split(',') as Status[],
-      paymentStatus: query.paymentStatus?.split(','),
+      status: query.status
+        ?.split(',')
+        .map((s) => s.trim().toLowerCase()) as Status[],
+      paymentStatus: query.paymentStatus
+        ?.split(',')
+        ?.map((s) => s.trim().toLowerCase()),
     };
 
     return this.orderService.getOrdersForAdmin(userId, params);
@@ -75,7 +80,7 @@ export class OrderController {
   async updateOrderStatus(
     @GetUser('id') userId: string,
     @Param('id') orderId: string,
-    @Body('status') status: Status,
+    @Body('status', new ParseEnumPipe(Status)) status: Status,
   ) {
     return this.orderService.updateOrderStatusByAdmin(orderId, userId, status);
   }

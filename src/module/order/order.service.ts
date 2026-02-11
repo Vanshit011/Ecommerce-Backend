@@ -43,7 +43,7 @@ export class OrderService {
     const cart = await this.cartService.getMyCart(userId);
 
     if (!cart.items.length) {
-      throw new NotFoundException('Cart is empty');
+      throw new BadRequestException('Cart is empty');
     }
 
     const address = await this.addressRepo.findOne({
@@ -249,7 +249,12 @@ export class OrderService {
     // unpaid order → just cancel
     if (order.status === Status.PENDING) {
       order.status = Status.CANCELLED;
-      return this.orderRepo.save(order);
+      try {
+        return await this.orderRepo.save(order);
+      } catch (err) {
+        console.error('DEBUG: cancelOrderByUser save error:', err);
+        throw err;
+      }
     }
 
     // failed payment → just cancel

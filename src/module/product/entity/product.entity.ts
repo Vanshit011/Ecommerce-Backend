@@ -25,7 +25,15 @@ export class Product extends BaseEntity {
   description: string;
 
   @Index()
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
   price: number;
 
   @OneToMany(() => ProductImage, (img) => img.product)
@@ -35,7 +43,7 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 50, unique: true })
   sku: string;
 
   @Index()

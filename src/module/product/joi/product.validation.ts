@@ -12,7 +12,7 @@ export const createProductSchema = Joi.object({
   availability: Joi.string()
     .valid(...Object.values(ProductStatus))
     .optional(),
-  category_id: Joi.string().required(), // Assuming UUID or string ID
+  category_id: Joi.string().uuid().required(), // Assuming UUID or string ID
   tags: Joi.array().items(Joi.string()).optional(),
   specifications: Joi.object().optional(),
   weight: Joi.number().optional(),
@@ -20,4 +20,8 @@ export const createProductSchema = Joi.object({
   is_active: Joi.boolean().optional(),
 });
 
-export const updateProductSchema = createProductSchema;
+// This takes all keys in createProductSchema and makes them .optional()
+export const updateProductSchema = createProductSchema.fork(
+  Object.keys(createProductSchema.describe().keys),
+  (schema) => schema.optional(),
+);

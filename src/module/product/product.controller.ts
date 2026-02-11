@@ -11,26 +11,28 @@ import {
   UploadedFiles,
   Query,
   UsePipes,
+  UseFilters,
 } from '@nestjs/common';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
-import {
-  createProductSchema,
-  updateProductSchema,
-} from './joi/product.validation';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { Roles } from '../../core/decorator/roles.decorator';
 import { UserRole } from '../../shared/constants/enum';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { ProductQuery } from 'src/core/decorator/product-query.decorator';
+import { FileSizeExceptionFilter } from 'src/shared/exception/file-size-exception.filter';
 import type {
   AdminProductQueryParams,
   ProductQueryParams,
 } from '../../shared/constants/types';
+import {
+  createProductSchema,
+  updateProductSchema,
+} from './joi/product.validation';
 
 @Controller('products')
 export class ProductController {
@@ -40,6 +42,7 @@ export class ProductController {
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UseFilters(FileSizeExceptionFilter)
   @UseInterceptors(
     FilesInterceptor('images', 8, {
       limits: {

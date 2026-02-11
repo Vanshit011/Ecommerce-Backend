@@ -22,10 +22,13 @@ import { OrderModule } from './module/order/order.module';
 import { WebhookModule } from './module/webhook/webhook.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PaymentsModule } from './module/payments/payments.module';
-import { SeederModule } from './module/seeder/seeder.module';
+import { SeederModule } from './seeder/seeder.module';
 import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './core/redis/redis.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -38,6 +41,10 @@ import { RedisModule } from './core/redis/redis.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema,
+      envFilePath: [
+        `env/.env.${process.env.NODE_ENV || 'development'}`,
+        'env/.env.local',
+      ],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -61,7 +68,9 @@ import { RedisModule } from './core/redis/redis.module';
     SeederModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_INTERCEPTOR,
       useClass: ErrorLoggingInterceptor,

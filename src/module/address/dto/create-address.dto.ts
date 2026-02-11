@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  MaxLength,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateAddressDto {
   @IsString()
@@ -17,18 +23,22 @@ export class CreateAddressDto {
   address_line_2?: string;
 
   @IsString()
-  @IsOptional()
-  city?: string;
+  @IsNotEmpty()
+  city: string;
 
   @IsString()
-  @IsOptional()
-  state?: string;
+  @IsNotEmpty()
+  state: string;
 
   @IsString()
-  @IsOptional()
-  postal_code?: string;
+  @IsNotEmpty()
+  postal_code: string;
 
   @IsString()
   @IsNotEmpty()
   country: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_default?: boolean;
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from './entity/address.entity';
@@ -26,12 +30,15 @@ export class AddressService {
     });
 
     if (existingAddress) {
-      throw new NotFoundException('Address already exists');
+      throw new BadRequestException('Address already exists');
     }
+
+    const count = await this.repo.count({ where: { user: { id: userId } } });
 
     const address = this.repo.create({
       ...dto,
       user: { id: userId },
+      is_default: count === 0,
     });
 
     return this.repo.save(address);
