@@ -1,4 +1,11 @@
-import { Body, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Delete,
+  Get,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { Controller } from '@nestjs/common/decorators/core/controller.decorator';
 import { UseGuards } from '@nestjs/common/decorators/core/use-guards.decorator';
 import { UserRole } from '../../shared/constants/enum';
@@ -8,6 +15,8 @@ import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { AddToCartDto } from './dto/add-to-cart.dto';
+import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
+import { addToCartSchema, updateQtySchema } from './joi/cart.validation';
 
 @Controller('cart')
 export class CartController {
@@ -20,7 +29,8 @@ export class CartController {
   add(
     @Param('productId') productId: string,
     @GetUser('id') userId: string,
-    @Body() body: AddToCartDto = {} as AddToCartDto,
+    @Body(new JoiValidationPipe(addToCartSchema))
+    body: AddToCartDto = {} as AddToCartDto,
   ) {
     return this.cartService.addToCart(userId, productId, body.quantity);
   }
@@ -42,6 +52,10 @@ export class CartController {
     @Param('qty') qty: number,
     @GetUser('id') userId: string,
   ) {
+    const { error } = updateQtySchema.validate(qty);
+    if (error) {
+      throw new BadRequestException(error.message);
+    }
     return this.cartService.updateCartItemQuantity(userId, productId, qty);
   }
 

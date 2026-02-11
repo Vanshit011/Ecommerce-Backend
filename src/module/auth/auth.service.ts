@@ -11,7 +11,7 @@ import { MailService } from '../mail/mail.service';
 import { Otp } from './entity/otp.entity';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { TokenService } from '../token/token.service';
-import { OtpType } from 'src/shared/constants/enum';
+import { OtpType } from '../../shared/constants/enum';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 

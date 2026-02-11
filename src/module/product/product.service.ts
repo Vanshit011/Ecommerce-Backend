@@ -34,7 +34,12 @@ export class ProductService {
   ) {
     const { category_id, main_image_index = 0, ...rest } = dto;
 
-    const category = await this.categoryRepo.findOneBy({ id: category_id });
+    let category;
+    try {
+      category = await this.categoryRepo.findOneBy({ id: category_id });
+    } catch {
+      throw new BadRequestException('Invalid category ID format');
+    }
 
     if (!category) {
       throw new BadRequestException('Invalid category selected');
@@ -82,29 +87,46 @@ export class ProductService {
 
   // admin see only own products
   async findAllForAdmin(userId: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+    // 1. Force values to numbers (in case they come as strings from query)
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
 
-    const [data, total] = await this.productRepo.findAndCount({
-      where: {
-        user: { id: userId },
-      },
-      relations: ['category', 'images'],
-      order: {
-        created_at: 'DESC',
-      },
-      take: limit,
-      skip,
-    });
+    // 2. Validate input to prevent 500 errors
+    if (
+      isNaN(pageNumber) ||
+      pageNumber < 1 ||
+      isNaN(limitNumber) ||
+      limitNumber < 1
+    ) {
+      throw new BadRequestException('Page and limit must be positive integers');
+    }
+    const skip = (pageNumber - 1) * limitNumber;
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    try {
+      const [data, total] = await this.productRepo.findAndCount({
+        where: {
+          user: { id: userId },
+        },
+        relations: ['category', 'images'],
+        order: {
+          created_at: 'DESC',
+        },
+        take: limit,
+        skip,
+      });
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch {
+      throw new BadRequestException('Invalid page or limit');
+    }
   }
 
   // admin update own product
@@ -173,10 +195,17 @@ export class ProductService {
       await this.imageRepo.save(images);
     }
 
-    return this.productRepo.findOne({
+    // At the end of your update method
+    const updatedProduct = await this.productRepo.findOne({
       where: { id },
       relations: ['images', 'category'],
     });
+
+    // If your test expects a flat 'category_id' string instead of an object:
+    return {
+      ...updatedProduct,
+      category_id: updatedProduct?.category?.id,
+    };
   }
 
   // admin delete own product
@@ -303,6 +332,11 @@ export class ProductService {
       where: { id, is_active: true },
       relations: ['category', 'images'],
     });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
     return product;
   }
 }

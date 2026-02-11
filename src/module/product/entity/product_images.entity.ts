@@ -8,10 +8,10 @@ export class ProductImage extends BaseEntity {
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   url: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   image_public_id: string;
 
   @Column({ type: 'boolean', default: false })

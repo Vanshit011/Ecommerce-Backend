@@ -12,10 +12,10 @@ import { Product } from '../../product/entity/product.entity';
 @Entity({ name: 'categories' })
 @Tree('nested-set')
 export class Category extends BaseEntity {
-  @Column({ length: 100, unique: true })
+  @Column({ type: 'varchar', length: 100, unique: true })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   description: string;
 
   @OneToMany(() => Product, (product) => product.category)

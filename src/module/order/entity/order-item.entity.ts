@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Order } from './order.entity';
 import { Product } from '../../product/entity/product.entity';
@@ -8,9 +8,11 @@ export class OrderItem extends BaseEntity {
   @ManyToOne(() => Order, (order) => order.items, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'order_id' })
   order: Order;
 
   @ManyToOne(() => Product)
+  @JoinColumn({ name: 'product_id' })
   product: Product;
 
   @Column('decimal', { precision: 10, scale: 2 })

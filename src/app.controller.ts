@@ -1,9 +1,12 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(4001);
-  console.log('🚀 Server running on http://localhost:4001');
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
 }
-bootstrap();
