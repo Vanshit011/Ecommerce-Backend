@@ -28,6 +28,8 @@ import { HealthModule } from './health/health.module';
 import { RedisModule } from './core/redis/redis.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { EventsModule } from './events/events.module';
+import { DashboardModule } from './module/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -66,6 +68,8 @@ import { AppService } from './app.service';
     OrderModule,
     PaymentsModule,
     SeederModule,
+    EventsModule,
+    DashboardModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],

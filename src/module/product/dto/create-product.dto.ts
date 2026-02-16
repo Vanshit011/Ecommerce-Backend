@@ -7,6 +7,10 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { ProductStatus } from '../../../shared/constants/enum';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { ValidateNested, IsArray } from 'class-validator';
+import { CreateVariantDto } from './create-variant.dto';
 
 export class CreateProductDto {
   @IsNotEmpty()
@@ -15,22 +19,23 @@ export class CreateProductDto {
   @IsNotEmpty()
   description: string;
 
+  @IsOptional()
   @IsNumber()
-  price: number;
+  price?: number;
 
   @IsOptional()
   @IsNumber()
   sale_price?: number;
 
-  @IsNotEmpty()
-  sku: string;
+  @IsOptional()
+  sku?: string;
 
   @IsOptional()
   brand?: string;
 
   @IsOptional()
   @IsInt()
-  stock_qty: number;
+  stock_qty?: number;
 
   @IsOptional()
   @IsEnum(ProductStatus)
@@ -55,4 +60,13 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+  @ApiPropertyOptional({
+    type: [CreateVariantDto],
+    description: 'List of product variants',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateVariantDto)
+  variants?: CreateVariantDto[];
 }

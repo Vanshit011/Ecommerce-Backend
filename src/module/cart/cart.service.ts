@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { CartItem } from './entity/cart.entity';
@@ -26,9 +26,9 @@ export class CartService {
     }
 
     //  Check stock
-    if (product.stock_qty < quantity) {
-      throw new BadRequestException('Out of stock');
-    }
+    // if (product.stock_qty < quantity) {
+    //   throw new BadRequestException('Out of stock');
+    // }
 
     //  Find existing cart item WITH SAME VARIANT
     const activeItem = await this.cartRepo.findOne({
@@ -55,7 +55,7 @@ export class CartService {
       product,
       quantity,
 
-      price_snapshot: product.sale_price ?? product.price,
+      // price_snapshot: product.sale_price ?? product.price,
     });
 
     const saved = await this.cartRepo.save(newItem);
@@ -109,11 +109,11 @@ export class CartService {
     }
 
     // Check stock for the new absolute quantity
-    if (item.product && item.product.stock_qty < quantity) {
-      throw new BadRequestException(
-        'Requested quantity exceeds available stock',
-      );
-    }
+    // if (item.product && item.product.stock_qty < quantity) {
+    //   throw new BadRequestException(
+    //     'Requested quantity exceeds available stock',
+    //   );
+    // }
 
     item.quantity = quantity;
     await this.cartRepo.save(item);

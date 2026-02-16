@@ -17,14 +17,15 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
 import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { Roles } from '../../core/decorator/roles.decorator';
 import { UserRole } from '../../shared/constants/enum';
 import { GetUser } from '../../core/decorator/get-user.decorator';
-import { ProductQuery } from 'src/core/decorator/product-query.decorator';
-import { FileSizeExceptionFilter } from 'src/shared/exception/file-size-exception.filter';
+import { ProductQuery } from '../../core/decorator/product-query.decorator';
+import { FileSizeExceptionFilter } from '../../shared/exception/file-size-exception.filter';
 import type {
   AdminProductQueryParams,
   ProductQueryParams,
@@ -32,6 +33,7 @@ import type {
 import {
   createProductSchema,
   updateProductSchema,
+  updateVariantSchema,
 } from './joi/product.validation';
 
 @Controller('products')
@@ -39,6 +41,7 @@ export class ProductController {
   constructor(private productService: ProductService) {}
 
   // ----------------ADMIN------------------//
+  @UsePipes(new JoiValidationPipe(createProductSchema))
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -50,7 +53,6 @@ export class ProductController {
       },
     }),
   )
-  @UsePipes(new JoiValidationPipe(createProductSchema))
   async create(
     @Body() dto: CreateProductDto,
     @UploadedFiles() files: Express.Multer.File[],
@@ -71,6 +73,7 @@ export class ProductController {
   }
 
   //admin update product
+  @UsePipes(new JoiValidationPipe(updateProductSchema))
   @Put(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -81,7 +84,6 @@ export class ProductController {
       },
     }),
   )
-  @UsePipes(new JoiValidationPipe(updateProductSchema))
   update(
     @Param('id') id: string,
     @Body() dto: Partial<CreateProductDto>,
@@ -89,6 +91,32 @@ export class ProductController {
     @GetUser('id') userId: string,
   ) {
     return this.productService.update(id, dto, files, userId);
+  }
+
+  //admin update specific variant
+  @UsePipes(new JoiValidationPipe(updateVariantSchema))
+  @Put(':productId/:variantId')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  updateVariant(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: UpdateVariantDto,
+    @GetUser('id') userId: string,
+  ) {
+    return this.productService.updateVariant(productId, variantId, dto, userId);
+  }
+
+  //admin delete specific variant
+  @Delete(':productId/:variantId')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  deleteVariant(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+    @GetUser('id') userId: string,
+  ) {
+    return this.productService.deleteVariant(productId, variantId, userId);
   }
 
   //admin delete product
