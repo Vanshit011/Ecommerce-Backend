@@ -5,10 +5,37 @@ services:
     depends_on:
       - postgres
       - redis
+    environment:
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=2004
+      - DB_NAME=ecommerce_db
+      - NODE_ENV=production
     env_file:
-      - .env
+      - env/.env.development
     ports:
       - "3000:3000"
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
+
+  frontend:
+    build: ../Ecommerce Frontend/ecommerce-frontend
+    container_name: ecommerce-frontend
+    depends_on:
+      - api
+    environment:
+      - VITE_API_URL=http://api:3000
+      - VITE_SOCKET_URL=http://api:3000
+    ports:
+      - "5173:80"
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
 
   postgres:
     image: postgres:15
@@ -22,6 +49,8 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
 
   redis:
     image: redis:7
@@ -29,6 +58,13 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
 
 volumes:
   pgdata:
+

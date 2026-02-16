@@ -13,6 +13,7 @@ import { Favorite } from '../../favorite/entity/favorite.entity';
 import { CartItem } from '../../cart/entity/cart.entity';
 import { ProductStatus } from '../../../shared/constants/enum';
 import { ProductImage } from './product_images.entity';
+import { ProductVariant } from './product-variant.entity';
 
 @Entity('products')
 @Index(['created_at'])
@@ -24,18 +25,6 @@ export class Product extends BaseEntity {
   @Column({ type: 'text' })
   description: string;
 
-  @Index()
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    transformer: {
-      to: (value: number) => value,
-      from: (value: string) => parseFloat(value),
-    },
-  })
-  price: number;
-
   @OneToMany(() => ProductImage, (img) => img.product)
   images: ProductImage[];
 
@@ -43,19 +32,9 @@ export class Product extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
-  sku: string;
-
   @Index()
   @Column({ type: 'varchar', length: 100, nullable: true })
   brand: string;
-
-  @Index()
-  @Column({ type: 'int', default: 0 })
-  stock_qty: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  sale_price: number;
 
   @Index()
   @Column({
@@ -78,4 +57,9 @@ export class Product extends BaseEntity {
 
   @OneToMany(() => CartItem, (cartItem) => cartItem.product)
   cart_items: CartItem[];
+
+  @OneToMany(() => ProductVariant, (variant) => variant.product, {
+    cascade: true,
+  })
+  variants: ProductVariant[];
 }

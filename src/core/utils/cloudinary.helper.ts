@@ -3,7 +3,10 @@ import sharp from 'sharp';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 
 export const uploadImage = async (buffer: Buffer, folder: string) => {
-  return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
+  return new Promise<{
+    url: string;
+    publicId: string;
+  }>((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,

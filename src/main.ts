@@ -28,7 +28,7 @@ async function bootstrap() {
         'http://localhost:5173',
         'http://192.168.5.42:5173',
         'http://localhost:3000',
-        // 'http://192.168.29.26:5173',
+        'http://frontend:5173', // Docker frontend container
       ];
 
       if (!origin || allowedOrigins.includes(origin)) {
@@ -50,6 +50,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(3000);
+  const port = Number(process.env.PORT) || 3000;
+  await app.listen(port);
+
+  // console.log(`🚀 API running on http://localhost:${port}`);
 }
+
 bootstrap();

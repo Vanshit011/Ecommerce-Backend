@@ -85,7 +85,7 @@ export class OrderService {
         //  product snapshot
         product_snapshot: {
           name: item.product.name,
-          sku: item.product.sku,
+          // sku: item.product.sku,
           image: item.product.images?.[0]?.url,
         },
       }),
@@ -155,9 +155,9 @@ export class OrderService {
 
       //  reduce stock
       for (const item of order.items) {
-        if (item.product.stock_qty < item.quantity) {
-          throw new Error(`Stock mismatch for product ${item.product.id}`);
-        }
+        // if (item.product.stock_qty < item.quantity) {
+        //   throw new Error(`Stock mismatch for product ${item.product.id}`);
+        // }
 
         await manager
           .getRepository(Product)
