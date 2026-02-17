@@ -11,10 +11,19 @@ import { Address } from '../address/entity/address.entity';
 import { StripeModule } from '../../core/stripe/stripe.module';
 import { OrderCronService } from './order-cron.service';
 import { Payment } from '../payments/entity/payments.entity';
+import { Product } from '../product/entity/product.entity';
+import { ProductVariant } from '../product/entity/product-variant.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Address, Payment]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderItem,
+      Address,
+      Payment,
+      Product,
+      ProductVariant,
+    ]),
     CartModule,
     AddressModule,
     AuthModule,

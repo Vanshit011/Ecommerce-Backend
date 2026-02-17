@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Order } from './order.entity';
 import { Product } from '../../product/entity/product.entity';
+import { ProductVariant } from '../../product/entity/product-variant.entity';
 
 @Entity('order_items')
 export class OrderItem extends BaseEntity {
@@ -15,6 +16,10 @@ export class OrderItem extends BaseEntity {
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
+  @ManyToOne(() => ProductVariant, { nullable: true })
+  @JoinColumn({ name: 'variant_id' })
+  variant: ProductVariant;
+
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
@@ -27,7 +32,7 @@ export class OrderItem extends BaseEntity {
   @Column({ type: 'varchar', length: 50, nullable: true })
   color: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'variant_id', nullable: true })
   variant_id: string;
 
   // optional but highly recommended

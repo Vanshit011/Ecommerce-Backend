@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Controller } from '@nestjs/common/decorators/core/controller.decorator';
 import { UseGuards } from '@nestjs/common/decorators/core/use-guards.decorator';
@@ -32,7 +33,12 @@ export class CartController {
     @Body(new JoiValidationPipe(addToCartSchema))
     body: AddToCartDto = {} as AddToCartDto,
   ) {
-    return this.cartService.addToCart(userId, productId, body.quantity);
+    return this.cartService.addToCart(
+      userId,
+      productId,
+      body.quantity,
+      body.variant_id,
+    );
   }
 
   // get cart
@@ -50,16 +56,34 @@ export class CartController {
   updateQty(
     @Param('productId') productId: string,
     @Param('qty') qty: number,
+    @Query('variantId') variantId: string,
     @GetUser('id') userId: string,
   ) {
     const { error } = updateQtySchema.validate(qty);
     if (error) {
       throw new BadRequestException(error.message);
     }
-    return this.cartService.updateCartItemQuantity(userId, productId, qty);
+    return this.cartService.updateCartItemQuantity(
+      userId,
+      productId,
+      qty,
+      variantId,
+    );
   }
 
-  // delete
+  // delete specific item
+  @Delete(':productId')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  removeItem(
+    @Param('productId') productId: string,
+    @Query('variantId') variantId: string,
+    @GetUser('id') userId: string,
+  ) {
+    return this.cartService.removeCartItem(userId, productId, variantId);
+  }
+
+  // delete ALL
   @Delete()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
