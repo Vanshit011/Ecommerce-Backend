@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, IsNull } from 'typeorm';
 import { CartItem } from './entity/cart.entity';
 import { Product } from '../product/entity/product.entity';
-import { NotFoundException } from '@nestjs/common';
+import { ProductVariant } from '../product/entity/product-variant.entity';
 
 @Injectable()
 export class CartService {
@@ -13,10 +17,18 @@ export class CartService {
 
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
+
+    @InjectRepository(ProductVariant)
+    private variantRepo: Repository<ProductVariant>,
   ) {}
 
   //add cart
-  async addToCart(userId: string, productId: string, quantity = 1) {
+  async addToCart(
+    userId: string,
+    productId: string,
+    quantity = 1,
+    variantId?: string,
+  ) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
     });
@@ -25,22 +37,55 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
-    //  Check stock
-    // if (product.stock_qty < quantity) {
-    //   throw new BadRequestException('Out of stock');
-    // }
+    let variant: ProductVariant | undefined = undefined;
+    let priceSnapshot = 0;
+
+    if (variantId) {
+      const foundVariant = await this.variantRepo.findOne({
+        where: { id: variantId, product: { id: productId } },
+      });
+
+      if (!foundVariant) {
+        throw new NotFoundException('Product variant not found');
+      }
+
+      variant = foundVariant;
+
+      // Check stock
+      if (variant.stock_qty < quantity) {
+        throw new BadRequestException('Requested quantity exceeds stock');
+      }
+      priceSnapshot = variant.price;
+    } else {
+      const hasVariants = await this.variantRepo.count({
+        where: { product: { id: productId } },
+      });
+      if (hasVariants > 0) {
+        throw new BadRequestException('Please specify a product variant');
+      }
+      // If no variants, fallback to product price if it exists (assuming hybrid schema or default)
+      // For now, let's assume if it has no variants, we use product.price (if it exists)
+      // priceSnapshot = (product as any).price || 0;
+    }
 
     //  Find existing cart item WITH SAME VARIANT
     const activeItem = await this.cartRepo.findOne({
       where: {
         user: { id: userId },
         product: { id: productId },
+        variant_id: variantId ? variantId : IsNull(),
       },
     });
 
     if (activeItem) {
-      activeItem.quantity += quantity;
+      const newQty = activeItem.quantity + quantity;
 
+      // Check stock for total qty
+      if (variant && variant.stock_qty < newQty) {
+        throw new BadRequestException('Total quantity exceeds available stock');
+      }
+
+      activeItem.quantity = newQty;
       await this.cartRepo.save(activeItem);
 
       return {
@@ -53,9 +98,12 @@ export class CartService {
     const newItem = this.cartRepo.create({
       user: { id: userId },
       product,
+      variant,
       quantity,
-
-      // price_snapshot: product.sale_price ?? product.price,
+      variant_id: variantId,
+      price_snapshot: priceSnapshot,
+      size: variant?.size,
+      color: variant?.color,
     });
 
     const saved = await this.cartRepo.save(newItem);
@@ -70,7 +118,7 @@ export class CartService {
   async getMyCart(userId: string) {
     const items = await this.cartRepo.find({
       where: { user: { id: userId } },
-      relations: ['product', 'product.images', 'product.category'],
+      relations: ['product', 'product.images', 'product.category', 'variant'],
       order: {
         created_at: 'ASC',
       },
@@ -84,15 +132,17 @@ export class CartService {
     userId: string,
     productId: string,
     quantity: number,
+    variantId?: string,
   ) {
     const where: FindOptionsWhere<CartItem> = {
       user: { id: userId },
       product: { id: productId },
+      variant_id: variantId ? variantId : IsNull(),
     };
 
     const item = await this.cartRepo.findOne({
       where,
-      relations: ['product'],
+      relations: ['product', 'variant'],
     });
 
     if (!item) {
@@ -109,11 +159,11 @@ export class CartService {
     }
 
     // Check stock for the new absolute quantity
-    // if (item.product && item.product.stock_qty < quantity) {
-    //   throw new BadRequestException(
-    //     'Requested quantity exceeds available stock',
-    //   );
-    // }
+    if (item.variant && item.variant.stock_qty < quantity) {
+      throw new BadRequestException(
+        'Requested quantity exceeds available stock',
+      );
+    }
 
     item.quantity = quantity;
     await this.cartRepo.save(item);
@@ -121,6 +171,25 @@ export class CartService {
       message: 'Cart item updated',
       item,
     };
+  }
+
+  // remove specific item
+  async removeCartItem(userId: string, productId: string, variantId?: string) {
+    const where: FindOptionsWhere<CartItem> = {
+      user: { id: userId },
+      product: { id: productId },
+      variant_id: variantId ? variantId : IsNull(),
+    };
+
+    const item = await this.cartRepo.findOne({ where });
+
+    if (!item) {
+      throw new NotFoundException('Cart item not found');
+    }
+
+    await this.cartRepo.remove(item);
+
+    return { message: 'Item removed from cart' };
   }
 
   //  CLEAR CART

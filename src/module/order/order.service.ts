@@ -16,6 +16,7 @@ import { AdminOrderQueryParams } from '../../shared/constants/types';
 import { Payment } from '../payments/entity/payments.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { Product } from '../product/entity/product.entity';
+import { ProductVariant } from '../product/entity/product-variant.entity';
 
 @Injectable()
 export class OrderService {
@@ -74,6 +75,7 @@ export class OrderService {
       this.orderItemRepo.create({
         order,
         product: item.product,
+        variant: item.variant,
         price: item.price_snapshot,
         quantity: item.quantity,
 
@@ -85,7 +87,7 @@ export class OrderService {
         //  product snapshot
         product_snapshot: {
           name: item.product.name,
-          // sku: item.product.sku,
+          sku: item.variant?.sku || '',
           image: item.product.images?.[0]?.url,
         },
       }),
@@ -125,6 +127,7 @@ export class OrderService {
           user: true,
           items: {
             product: true,
+            variant: true,
           },
         },
       });
@@ -155,13 +158,15 @@ export class OrderService {
 
       //  reduce stock
       for (const item of order.items) {
-        // if (item.product.stock_qty < item.quantity) {
-        //   throw new Error(`Stock mismatch for product ${item.product.id}`);
-        // }
-
-        await manager
-          .getRepository(Product)
-          .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
+        if (item.variant) {
+          await manager
+            .getRepository(ProductVariant)
+            .decrement({ id: item.variant.id }, 'stock_qty', item.quantity);
+        } else {
+          await manager
+            .getRepository(Product)
+            .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
+        }
       }
     });
   }

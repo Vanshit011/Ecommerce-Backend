@@ -3,6 +3,10 @@ import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 export class AddToCartDto {
   @IsOptional()
   @IsString()
+  variant_id: string;
+
+  @IsOptional()
+  @IsString()
   size: string;
 
   @IsOptional()
