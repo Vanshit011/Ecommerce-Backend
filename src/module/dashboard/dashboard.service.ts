@@ -52,7 +52,7 @@ export class DashboardService {
       this.getOrderStatistics(query),
       this.getTopProducts({ ...query, limit: 5 }),
       this.getRecentOrders({ ...query, limit: 5 }),
-      this.getSalesByCategory(),
+      this.getSalesByCategory(query),
       this.getPopularFavoriteProducts(),
     ]);
 
@@ -81,7 +81,7 @@ export class DashboardService {
 
     const endDate = month ? new Date(year, month, 1) : new Date(year + 1, 0, 1);
 
-    // 🔹 Monthly revenue (current year)
+    // Monthly revenue (current year)
     const monthlyRevenue = await this.orderRepository
       .createQueryBuilder('o')
       .select('EXTRACT(MONTH FROM o.created_at)', 'month')
@@ -107,12 +107,14 @@ export class DashboardService {
     );
 
     let prevRevenue = 0;
+    let prevOrders = 0;
 
     const monthlyData: MonthlyRevenueDto[] = (
       month ? [month - 1] : [...Array(12).keys()]
     ).map((i) => {
       const data = monthMap.get(i + 1) ?? { revenue: 0, orders: 0 };
       const currentRevenue = data.revenue;
+      const currentOrders = data.orders;
 
       let growth = 0;
       if (prevRevenue > 0) {
@@ -121,22 +123,33 @@ export class DashboardService {
         growth = 100;
       }
 
+      let orderGrowth = 0;
+      if (prevOrders > 0) {
+        orderGrowth = ((currentOrders - prevOrders) / prevOrders) * 100;
+      } else if (currentOrders > 0 && i > 0) {
+        orderGrowth = 100;
+      }
+
       prevRevenue = currentRevenue || prevRevenue;
+      prevOrders = currentOrders || prevOrders;
 
       return {
         month: MONTH_NAMES[i],
         revenue: currentRevenue,
-        orders: data.orders,
+        orders: currentOrders,
         growth: +growth.toFixed(2),
+        orderGrowth: +orderGrowth.toFixed(2),
       };
     });
 
     const totalRevenue = monthlyData.reduce((s, m) => s + m.revenue, 0);
+    const totalOrders = monthlyData.reduce((s, m) => s + m.orders, 0);
 
-    // 🔹 Year-wise growth
-    const prevYearRevenue = await this.orderRepository
+    // Year-wise growth
+    const prevYearStats = await this.orderRepository
       .createQueryBuilder('o')
       .select('SUM(o.total_amount)', 'revenue')
+      .addSelect('COUNT(o.id)', 'orders')
       .where('o.status = :status', { status: Status.DELIVERED })
       .andWhere('o.created_at >= :s AND o.created_at < :e', {
         s: new Date(year - 1, 0, 1),
@@ -144,19 +157,29 @@ export class DashboardService {
       })
       .getRawOne();
 
-    const prevYearTotal = Number(prevYearRevenue?.revenue || 0);
+    const prevYearRevenue = Number(prevYearStats?.revenue || 0);
+    const prevYearOrders = Number(prevYearStats?.orders || 0);
 
     const yearGrowth =
-      prevYearTotal > 0
-        ? ((totalRevenue - prevYearTotal) / prevYearTotal) * 100
+      prevYearRevenue > 0
+        ? ((totalRevenue - prevYearRevenue) / prevYearRevenue) * 100
         : totalRevenue > 0
+          ? 100
+          : 0;
+
+    const yearOrderGrowth =
+      prevYearOrders > 0
+        ? ((totalOrders - prevYearOrders) / prevYearOrders) * 100
+        : totalOrders > 0
           ? 100
           : 0;
 
     return {
       year,
       totalRevenue,
+      totalOrders,
       growth: +yearGrowth.toFixed(2),
+      orderGrowth: +yearOrderGrowth.toFixed(2),
       monthlyData,
     };
   }
@@ -256,7 +279,18 @@ export class DashboardService {
     });
   }
 
-  async getSalesByCategory(): Promise<SalesByCategoryDto[]> {
+  async getSalesByCategory(
+    query: DashboardQueryDto,
+  ): Promise<SalesByCategoryDto[]> {
+    const year = query.year ?? new Date().getFullYear();
+    const month = query.month;
+
+    const startDate = month
+      ? new Date(year, month - 1, 1)
+      : new Date(year, 0, 1);
+
+    const endDate = month ? new Date(year, month, 1) : new Date(year + 1, 0, 1);
+
     const salesByCategory = await this.orderItemRepository
       .createQueryBuilder('orderItem')
       .leftJoin('orderItem.product', 'product')
@@ -265,6 +299,10 @@ export class DashboardService {
       .select('category.name', 'category')
       .addSelect('SUM(orderItem.price * orderItem.quantity)', 'sales')
       .where('order.status = :status', { status: Status.DELIVERED })
+      .andWhere('order.created_at >= :start AND order.created_at < :end', {
+        start: startDate,
+        end: endDate,
+      })
       .groupBy('category.name')
       .orderBy('sales', 'DESC')
       .getRawMany();
@@ -287,20 +325,16 @@ export class DashboardService {
   }
 
   async getPopularFavoriteProducts(): Promise<FavoriteProductDto[]> {
-    const data = await this.productRepository.query(
-      `
-      SELECT
-        p.id AS "productId",
-        p.name AS "productName",
-        COUNT(f.id)::int AS "favoritesCount"
-      FROM favorites f
-      JOIN products p ON f.product_id = p.id
-      GROUP BY p.id, p.name
-      ORDER BY "favoritesCount" DESC
-      LIMIT 10
-      `,
-    );
-
-    return data;
+    return this.productRepository
+      .createQueryBuilder('p')
+      .innerJoin('favorites', 'f', 'f.product_id = p.id')
+      .select('p.id', 'productId')
+      .addSelect('p.name', 'productName')
+      .addSelect('COUNT(f.id)::int', 'favoritescount')
+      .groupBy('p.id')
+      .addGroupBy('p.name')
+      .orderBy('favoritescount', 'DESC')
+      .limit(10)
+      .getRawMany();
   }
 }
