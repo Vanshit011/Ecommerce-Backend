@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
 import {
@@ -18,14 +18,12 @@ import { UserRole } from 'src/shared/constants/enum';
 
 @Controller('dashboard')
 @UseGuards(AuthGuard, RolesGuard)
-@ApiBearerAuth()
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('overview')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get complete dashboard overview' })
-  @ApiResponse({ status: 200, type: DashboardOverviewDto })
   async getOverview(
     @Query() query: DashboardQueryDto,
   ): Promise<DashboardOverviewDto> {
@@ -35,7 +33,6 @@ export class DashboardController {
   @Get('revenue')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get revenue analytics with monthly breakdown' })
-  @ApiResponse({ status: 200, type: RevenueAnalyticsDto })
   async getRevenueAnalytics(
     @Query() query: DashboardQueryDto,
   ): Promise<RevenueAnalyticsDto> {
@@ -45,7 +42,6 @@ export class DashboardController {
   @Get('orders/stats')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get order statistics by status' })
-  @ApiResponse({ status: 200, type: OrderStatisticsDto })
   async getOrderStatistics(
     @Query() query: DashboardQueryDto,
   ): Promise<OrderStatisticsDto> {
@@ -55,7 +51,6 @@ export class DashboardController {
   @Get('products/top')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get top products by revenue' })
-  @ApiResponse({ status: 200, type: [TopProductDto] })
   async getTopProducts(
     @Query() query: DashboardQueryDto,
   ): Promise<TopProductDto[]> {
@@ -65,7 +60,6 @@ export class DashboardController {
   @Get('orders/recent')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get recent orders' })
-  @ApiResponse({ status: 200, type: [RecentOrderDto] })
   async getRecentOrders(
     @Query() query: DashboardQueryDto,
   ): Promise<RecentOrderDto[]> {
@@ -75,15 +69,15 @@ export class DashboardController {
   @Get('sales/category')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get sales breakdown by category' })
-  @ApiResponse({ status: 200, type: [SalesByCategoryDto] })
-  async getSalesByCategory(): Promise<SalesByCategoryDto[]> {
-    return this.dashboardService.getSalesByCategory();
+  async getSalesByCategory(
+    @Query() query: DashboardQueryDto,
+  ): Promise<SalesByCategoryDto[]> {
+    return this.dashboardService.getSalesByCategory(query);
   }
 
   @Get('favorites/popular')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get popular products by favorites' })
-  @ApiResponse({ status: 200, type: [FavoriteProductDto] })
   async getPopularFavorites(): Promise<FavoriteProductDto[]> {
     return this.dashboardService.getPopularFavoriteProducts();
   }

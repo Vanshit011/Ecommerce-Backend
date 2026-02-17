@@ -28,6 +28,7 @@ async function bootstrap() {
         'http://localhost:5173',
         'http://192.168.5.42:5173',
         'http://localhost:3000',
+        'http://192.168.5.113:5173',
         'http://frontend:5173', // Docker frontend container
       ];
 

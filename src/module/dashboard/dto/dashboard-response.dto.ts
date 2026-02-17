@@ -12,6 +12,9 @@ export class MonthlyRevenueDto {
 
   @ApiProperty()
   growth: number;
+
+  @ApiProperty()
+  orderGrowth: number;
 }
 
 export class RevenueAnalyticsDto {
@@ -22,7 +25,13 @@ export class RevenueAnalyticsDto {
   totalRevenue: number;
 
   @ApiProperty()
+  totalOrders: number;
+
+  @ApiProperty()
   growth: number;
+
+  @ApiProperty()
+  orderGrowth: number;
 
   @ApiProperty({ type: [MonthlyRevenueDto] })
   monthlyData: MonthlyRevenueDto[];
@@ -114,6 +123,47 @@ export class FavoriteProductDto {
 
   @ApiProperty()
   favoritesCount: number;
+}
+
+export class DailyOrderCountDto {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+export class MonthlyOrderGrowthDto {
+  @ApiProperty()
+  month: string;
+
+  @ApiProperty()
+  count: number;
+
+  @ApiProperty()
+  growth: number;
+}
+
+export class YearlyOrderGrowthDto {
+  @ApiProperty()
+  year: number;
+
+  @ApiProperty()
+  count: number;
+
+  @ApiProperty()
+  growth: number;
+}
+
+export class OrderGrowthResponseDto {
+  @ApiProperty({ type: [YearlyOrderGrowthDto] })
+  yearly: YearlyOrderGrowthDto[];
+
+  @ApiProperty({ type: [MonthlyOrderGrowthDto] })
+  monthly: MonthlyOrderGrowthDto[];
+
+  @ApiProperty({ type: [DailyOrderCountDto] })
+  daily: DailyOrderCountDto[];
 }
 
 export class DashboardOverviewDto {
