@@ -1,14 +1,16 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Order } from '../../order/entity/order.entity';
 import { User } from '../../user/entity/user.entity';
 
 @Entity({ name: 'payments' })
 export class Payment extends BaseEntity {
+  @Index()
   @ManyToOne(() => User, (user) => user.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index()
   @ManyToOne(() => Order, (order) => order.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
   order: Order;

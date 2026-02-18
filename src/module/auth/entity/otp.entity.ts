@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne } from 'typeorm';
+import { Entity, Column, ManyToOne, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../user/entity/user.entity';
 import { OtpType } from '../../../shared/constants/enum';
@@ -27,6 +27,7 @@ export class Otp extends BaseEntity {
   })
   expires_at: Date;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.otps, {
     nullable: false,
     onDelete: 'CASCADE',

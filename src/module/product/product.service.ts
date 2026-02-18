@@ -4,16 +4,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Product } from '../product/entity/product.entity';
-import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductDto } from './dto/product/create-product.dto';
 import { Category } from '../categories/entity/category.entity';
 import { ProductImage } from './entity/product_images.entity';
-import { ProductStatus } from '../../shared/constants/enum';
 import type { ProductQueryParams } from '../../shared/constants/types';
 import { deleteImage, uploadImage } from '../../core/utils/cloudinary.helper';
 import { ProductVariant } from './entity/product-variant.entity';
-import { UpdateVariantDto } from './dto/update-variant.dto';
+import { UpdateVariantDto } from './dto/variant/update-variant.dto';
+import { BulkUpdateVariantItemDto } from './dto/variant/bulk-update-variant.dto';
+import { UpdateProductDto } from './dto/product/update-product.dto';
+import { CreateVariantDto } from './dto/variant/create-variant.dto';
+import sharp from 'sharp';
 
 @Injectable()
 export class ProductService {
@@ -147,130 +150,146 @@ export class ProductService {
   }
 
   // admin update own product
-  async update(
+  async updateProduct(
     id: string,
-    dto: Partial<CreateProductDto>,
+    dto: Partial<UpdateProductDto>,
     files: Express.Multer.File[],
     userId: string,
   ) {
-    return this.productRepo.manager.transaction(async (manager) => {
-      const productRepo = manager.getRepository(Product);
-      const variantRepo = manager.getRepository(ProductVariant);
-      const imageRepo = manager.getRepository(ProductImage);
+    const product = await this.productRepo.findOne({
+      where: { id, user: { id: userId } },
+      relations: ['category', 'images', 'variants'],
+    });
 
-      const product = await productRepo.findOne({
-        where: { id, user: { id: userId } },
-        relations: ['images', 'variants', 'category'],
+    if (!product) {
+      throw new NotFoundException('Product not found or access denied');
+    }
+
+    let hasChanges = false;
+
+    // Normalize
+    if (dto.availability) {
+      dto.availability = dto.availability.toUpperCase() as any;
+    }
+
+    const fieldsToUpdate: (keyof UpdateProductDto)[] = [
+      'name',
+      'description',
+      'brand',
+      'is_active',
+      'availability',
+    ];
+
+    for (const field of fieldsToUpdate) {
+      if (dto[field] !== undefined && dto[field] !== product[field]) {
+        (product as any)[field] = dto[field];
+        hasChanges = true;
+      }
+    }
+
+    // Category diff
+    if (dto.category_id && dto.category_id !== product.category?.id) {
+      const category = await this.categoryRepo.findOneBy({
+        id: dto.category_id,
+      });
+      if (!category) throw new BadRequestException('Invalid category');
+      product.category = category;
+      hasChanges = true;
+    }
+
+    // Image diff (intentional)
+    const hasNewImages = files && files.length > 0;
+    if (hasNewImages) hasChanges = true;
+
+    //  NO CHANGE → EXIT
+    if (!hasChanges) {
+      return { message: 'No changes detected', product };
+    }
+
+    // Save product
+    await this.productRepo.save(product);
+
+    // Images (WAIT here)
+    if (hasNewImages) {
+      const imageRepo = this.productRepo.manager.getRepository(ProductImage);
+
+      const oldImages = await imageRepo.find({
+        where: { product: { id } },
       });
 
-      if (!product) {
-        throw new NotFoundException('Product not found or access denied');
-      }
+      await Promise.all(
+        oldImages.map((img) =>
+          img.image_public_id
+            ? deleteImage(img.image_public_id)
+            : Promise.resolve(),
+        ),
+      );
 
-      const { variants, ...rest } = dto;
+      await imageRepo.delete({ product: { id } });
 
-      // ---------- normalize ----------
-      if (rest.price !== undefined) rest.price = Number(rest.price);
-      if (rest.sale_price !== undefined)
-        rest.sale_price = Number(rest.sale_price);
-      if (rest.stock_qty !== undefined) rest.stock_qty = Number(rest.stock_qty);
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const compressed = await sharp(file.buffer)
+            .resize(1200)
+            .jpeg({ quality: 75 })
+            .toBuffer();
+          return uploadImage(compressed, 'ecommerce/products');
+        }),
+      );
 
-      if (rest.is_active !== undefined) {
-        rest.is_active = rest.is_active === true;
-      }
-
-      if (typeof rest.availability === 'string') {
-        rest.availability = rest.availability.toUpperCase() as ProductStatus;
-      }
-
-      Object.assign(product, rest);
-
-      // ---------- auto availability ----------
-      if (rest.stock_qty !== undefined) {
-        product.availability =
-          rest.stock_qty === 0
-            ? ProductStatus.OUTOFSTOCK
-            : ProductStatus.INSTOCK;
-      }
-
-      await productRepo.save(product);
-
-      // ---------- VARIANTS ----------
-      // STRICT ID MATCHING (MERGE STRATEGY)
-      if (variants) {
-        const createVariantDto = variants;
-
-        for (const v of createVariantDto) {
-          // Handle sparse array (undefined/null items)
-          if (!v) continue;
-
-          if (v.id) {
-            // UPDATE existing variant by ID
-            const variantUpdate: Partial<ProductVariant> = {};
-            if (v.color !== undefined) variantUpdate.color = v.color;
-            if (v.size !== undefined) variantUpdate.size = v.size;
-            if (v.price !== undefined) variantUpdate.price = v.price;
-            if (v.stock_qty !== undefined)
-              variantUpdate.stock_qty = v.stock_qty;
-            if (v.sku !== undefined) variantUpdate.sku = v.sku;
-
-            // We use update here, assuming the ID belongs to this product.
-            await variantRepo.update(v.id, variantUpdate as any);
-          } else {
-            // CREATE new variant
-            const price = v.price !== undefined ? v.price : 0;
-            const stock_qty = v.stock_qty !== undefined ? v.stock_qty : 0;
-            const sku =
-              v.sku ||
-              `SKU-${Math.random()
-                .toString(36)
-                .substring(2, 10)
-                .toUpperCase()}`;
-
-            await variantRepo.save(
-              variantRepo.create({
-                ...v,
-                price,
-                stock_qty,
-                sku,
-                product,
-              }),
-            );
-          }
-        }
-      }
-
-      // ---------- IMAGES ----------
-      if (files?.length) {
-        for (const img of product.images) {
-          if (img.image_public_id) {
-            await deleteImage(img.image_public_id);
-          }
-        }
-
-        await imageRepo.delete({ product: { id } });
-
-        const uploadResults = await Promise.all(
-          files.map((file) => uploadImage(file.buffer, 'ecommerce/products')),
-        );
-
-        const images = uploadResults.map((result, index) =>
+      const mainIdx = Number(dto.main_image_index || 0);
+      await imageRepo.save(
+        uploads.map((u, i) =>
           imageRepo.create({
             product,
-            url: result.url,
-            image_public_id: result.publicId,
-            is_main: index === 0,
+            url: u.url,
+            image_public_id: u.publicId,
+            is_main: i === mainIdx,
           }),
-        );
+        ),
+      );
+    }
 
-        await imageRepo.save(images);
-      }
-
-      return productRepo.findOne({
-        where: { id },
-        relations: ['images', 'category', 'variants'],
-      });
+    // FETCH UPDATED PRODUCT
+    const updatedProduct = await this.productRepo.findOne({
+      where: { id },
+      relations: ['category', 'images', 'variants'],
     });
+
+    return {
+      message: 'Product updated successfully',
+      product: updatedProduct,
+    };
+  }
+
+  //admin create variants
+  async createVariant(
+    productId: string,
+    dto: CreateVariantDto,
+    userId: string,
+  ) {
+    //  Check product ownership
+    const product = await this.productRepo.findOne({
+      where: { id: productId, user: { id: userId } },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found or access denied');
+    }
+
+    //  Create variant
+    const variant = this.variantRepo.create({
+      product,
+      ...dto,
+    });
+
+    //  Save variant
+    await this.variantRepo.save(variant);
+
+    return {
+      message: 'Variant created successfully',
+      variant,
+    };
   }
 
   // admin update specific variant
@@ -280,36 +299,170 @@ export class ProductService {
     dto: UpdateVariantDto,
     userId: string,
   ) {
-    // 1. Verify product ownership
+    //  Check product ownership
     const product = await this.productRepo.findOne({
       where: { id: productId, user: { id: userId } },
     });
 
     if (!product) {
-      throw new NotFoundException(
-        'Product not found or access denied (ownership check failed)',
-      );
+      throw new NotFoundException('Product not found or access denied');
     }
 
-    // 2. Verify variant belongs to product
+    //  Fetch variant
     const variant = await this.variantRepo.findOne({
       where: { id: variantId, product: { id: productId } },
     });
 
     if (!variant) {
-      throw new NotFoundException(
-        'Variant not found or does not belong to this product',
-      );
+      throw new NotFoundException('Variant not found for this product');
     }
 
-    // 3. Update fields
-    if (dto.color !== undefined) variant.color = dto.color;
-    if (dto.size !== undefined) variant.size = dto.size;
-    if (dto.price !== undefined) variant.price = dto.price;
-    if (dto.stock_qty !== undefined) variant.stock_qty = dto.stock_qty;
-    if (dto.sku !== undefined) variant.sku = dto.sku;
+    let hasChanges = false;
 
-    return this.variantRepo.save(variant);
+    //  Update ONLY if value is different
+    if (dto.color !== undefined && dto.color !== variant.color) {
+      variant.color = dto.color;
+      hasChanges = true;
+    }
+
+    if (dto.size !== undefined && dto.size !== variant.size) {
+      variant.size = dto.size;
+      hasChanges = true;
+    }
+
+    if (dto.price !== undefined && dto.price !== variant.price) {
+      variant.price = dto.price;
+      hasChanges = true;
+    }
+
+    if (dto.stock_qty !== undefined && dto.stock_qty !== variant.stock_qty) {
+      variant.stock_qty = dto.stock_qty;
+      hasChanges = true;
+    }
+
+    if (dto.sku !== undefined && dto.sku !== variant.sku) {
+      variant.sku = dto.sku;
+      hasChanges = true;
+    }
+
+    //  NO CHANGE → RETURN EARLY (IMPORTANT)
+    if (!hasChanges) {
+      return {
+        message: 'No changes detected',
+        variant,
+      };
+    }
+
+    // Save ONLY when changed
+    const updatedVariant = await this.variantRepo.save(variant);
+
+    return {
+      message: 'Variant updated successfully',
+      variant: updatedVariant,
+    };
+  }
+
+  //bulk update variants
+  async bulkUpdateVariants(
+    productId: string,
+    variants: BulkUpdateVariantItemDto[],
+    userId: string,
+  ) {
+    return this.variantRepo.manager.transaction(async (manager) => {
+      const productRepo = manager.getRepository(Product);
+      const variantRepo = manager.getRepository(ProductVariant);
+
+      // Verify product ownership
+      const product = await productRepo.findOne({
+        where: { id: productId, user: { id: userId } },
+      });
+
+      if (!product) {
+        throw new NotFoundException('Product not found or access denied');
+      }
+
+      // Fetch all existing variants
+      const variantIds = variants.map((v) => v.id);
+
+      const existingVariants = await variantRepo.find({
+        where: {
+          id: In(variantIds),
+          product: { id: productId },
+        },
+      });
+
+      if (existingVariants.length !== variants.length) {
+        throw new BadRequestException(
+          'Some variants do not belong to this product',
+        );
+      }
+
+      // Map for fast lookup
+      const variantMap = new Map(existingVariants.map((v) => [v.id, v]));
+
+      let totalChanges = 0;
+
+      // Diff check per variant
+      for (const incoming of variants) {
+        const existing = variantMap.get(incoming.id);
+        if (!existing) continue;
+
+        let hasChanges = false;
+
+        if (incoming.color !== undefined && incoming.color !== existing.color) {
+          existing.color = incoming.color;
+          hasChanges = true;
+        }
+
+        if (incoming.size !== undefined && incoming.size !== existing.size) {
+          existing.size = incoming.size;
+          hasChanges = true;
+        }
+
+        if (incoming.price !== undefined && incoming.price !== existing.price) {
+          existing.price = incoming.price;
+          hasChanges = true;
+        }
+
+        if (
+          incoming.stock_qty !== undefined &&
+          incoming.stock_qty !== existing.stock_qty
+        ) {
+          existing.stock_qty = incoming.stock_qty;
+          hasChanges = true;
+        }
+
+        if (incoming.sku !== undefined && incoming.sku !== existing.sku) {
+          existing.sku = incoming.sku;
+          hasChanges = true;
+        }
+
+        // Save ONLY if this variant changed
+        if (hasChanges) {
+          await variantRepo.save(existing);
+          totalChanges++;
+        }
+      }
+
+      //  NOTHING CHANGED → EXIT EARLY
+      if (totalChanges === 0) {
+        return {
+          message: 'No changes detected',
+          variants: existingVariants,
+        };
+      }
+
+      // Return updated variants
+      const updatedVariants = await variantRepo.find({
+        where: { product: { id: productId } },
+      });
+
+      return {
+        message: 'Variants updated successfully',
+        updatedCount: totalChanges,
+        variants: updatedVariants,
+      };
+    });
   }
 
   // admin delete specific variant

@@ -15,11 +15,15 @@ import { Payment } from '../../payments/entity/payments.entity';
 
 @Entity('orders')
 @Index(['created_at'])
+@Index(['user', 'created_at'])
+@Index(['status'])
 export class Order extends BaseEntity {
+  @Index()
   @ManyToOne(() => User, (user) => user.order, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index()
   @ManyToOne(() => Address, (address) => address.order, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'address_id' })
   address: Address;

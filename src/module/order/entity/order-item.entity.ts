@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Order } from './order.entity';
 import { Product } from '../../product/entity/product.entity';
@@ -6,12 +6,14 @@ import { ProductVariant } from '../../product/entity/product-variant.entity';
 
 @Entity('order_items')
 export class OrderItem extends BaseEntity {
+  @Index()
   @ManyToOne(() => Order, (order) => order.items, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
+  @Index()
   @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;

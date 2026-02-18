@@ -1,15 +1,18 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
 import { ProductVariant } from '../../product/entity/product-variant.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('cart_items')
+@Index(['user', 'product', 'variant_id'])
 export class CartItem extends BaseEntity {
+  @Index()
   @ManyToOne(() => User, (user) => user.cart_items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index()
   @ManyToOne(() => Product, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;
