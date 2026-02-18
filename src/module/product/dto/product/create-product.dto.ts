@@ -6,11 +6,11 @@ import {
   IsInt,
   IsBoolean,
 } from 'class-validator';
-import { ProductStatus } from '../../../shared/constants/enum';
+import { ProductStatus } from '../../../../shared/constants/enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ValidateNested, IsArray } from 'class-validator';
-import { CreateVariantDto } from './create-variant.dto';
+import { CreateVariantDto } from '../variant/create-variant.dto';
 
 export class CreateProductDto {
   @IsNotEmpty()
@@ -43,15 +43,6 @@ export class CreateProductDto {
 
   @IsNotEmpty()
   category_id: string;
-
-  @IsOptional()
-  tags?: string[];
-
-  @IsOptional()
-  specifications?: Record<string, any>;
-
-  @IsOptional()
-  weight?: number;
 
   @IsOptional()
   @IsInt()

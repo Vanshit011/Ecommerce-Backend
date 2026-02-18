@@ -17,6 +17,9 @@ import { ProductVariant } from './product-variant.entity';
 
 @Entity('products')
 @Index(['created_at'])
+@Index(['category', 'is_active'])
+@Index(['category', 'availability', 'is_active'])
+@Index(['brand', 'is_active'])
 export class Product extends BaseEntity {
   @Index()
   @Column({ type: 'varchar', length: 255 })
@@ -44,10 +47,12 @@ export class Product extends BaseEntity {
   availability: ProductStatus;
   //  RELATIONS
 
+  @Index()
   @ManyToOne(() => Category, (category) => category.products)
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.products, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;

@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne } from 'typeorm';
+import { Entity, Column, ManyToOne, Index } from 'typeorm';
 
 import { User } from '../../user/entity/user.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
@@ -23,6 +23,7 @@ export class Token extends BaseEntity {
   @Column({ type: 'timestamp' })
   expires_at: Date;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.tokens, { onDelete: 'CASCADE' })
   user: User;
 }

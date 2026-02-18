@@ -60,10 +60,6 @@ export const updateProductSchema = Joi.object({
 
   category_id: Joi.string().uuid().optional(),
 
-  tags: Joi.array().items(Joi.string().trim()).optional(),
-
-  specifications: Joi.object().optional(),
-
   price: Joi.number().positive().optional(),
 
   sale_price: Joi.number().positive().optional(),
@@ -72,12 +68,28 @@ export const updateProductSchema = Joi.object({
 
   stock_qty: Joi.number().integer().min(0).optional(),
 
-  weight: Joi.number().positive().optional(),
-
   main_image_index: Joi.number().integer().min(0).optional(),
 
   is_active: Joi.boolean().optional(),
+}).options({ convert: true });
 
+export const addVariantSchema = Joi.object({
+  color: Joi.string().trim().optional().allow(null, ''),
+  size: Joi.string().trim().optional().allow(null, ''),
+  price: Joi.number().positive().optional(),
+  stock_qty: Joi.number().integer().min(0).optional(),
+  sku: Joi.string().trim().optional(),
+}).options({ convert: true });
+
+export const updateVariantSchema = Joi.object({
+  color: Joi.string().trim().optional().allow(null, ''),
+  size: Joi.string().trim().optional().allow(null, ''),
+  price: Joi.number().positive().optional(),
+  stock_qty: Joi.number().integer().min(0).optional(),
+  sku: Joi.string().trim().optional(),
+}).options({ convert: true });
+
+export const bulkUpdateVariantSchema = Joi.object({
   variants: Joi.array()
     .items(
       Joi.object({
@@ -91,12 +103,4 @@ export const updateProductSchema = Joi.object({
     )
     .sparse()
     .optional(),
-}).options({ convert: true });
-
-export const updateVariantSchema = Joi.object({
-  color: Joi.string().trim().optional().allow(null, ''),
-  size: Joi.string().trim().optional().allow(null, ''),
-  price: Joi.number().positive().optional(),
-  stock_qty: Joi.number().integer().min(0).optional(),
-  sku: Joi.string().trim().optional(),
 }).options({ convert: true });

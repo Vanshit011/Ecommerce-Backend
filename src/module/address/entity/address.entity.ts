@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../user/entity/user.entity';
 import { Order } from './../../order/entity/order.entity';
@@ -29,6 +36,7 @@ export class Address extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   is_default: boolean;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.address, {
     onDelete: 'CASCADE',
   })

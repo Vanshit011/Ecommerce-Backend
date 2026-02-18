@@ -16,6 +16,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
   name: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 

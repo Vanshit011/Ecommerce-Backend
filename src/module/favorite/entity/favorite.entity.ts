@@ -1,9 +1,10 @@
-import { Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
 
 @Entity('favorites')
+@Index(['user', 'product'])
 export class Favorite extends BaseEntity {
   @ManyToOne(() => User, (user) => user.favorites, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
