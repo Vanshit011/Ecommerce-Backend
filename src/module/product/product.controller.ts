@@ -174,16 +174,16 @@ export class ProductController {
   @Get()
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(300) // 5 minutes
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER, UserRole.ADMIN)
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(UserRole.USER, UserRole.ADMIN)
   findAll(@ProductQuery() query: ProductQueryParams) {
     return this.productService.findAllForUsers(query);
   }
 
   // get single product details for users
   @Get(':id')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER, UserRole.ADMIN)
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(UserRole.USER, UserRole.ADMIN)
   getProductDetails(@Param('id') id: string) {
     return this.productService.getProductDetails(id);
   }

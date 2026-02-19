@@ -35,7 +35,7 @@ export class CategoriesController {
   }
 
   @Get()
-  @UseGuards(AuthGuard, RolesGuard)
+  // @UseGuards(AuthGuard, RolesGuard)
   async findAll(): Promise<Category[]> {
     const tree = await this.categoriesService.findAll();
     return tree;
