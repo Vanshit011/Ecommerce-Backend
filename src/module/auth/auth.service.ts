@@ -11,7 +11,7 @@ import { MailService } from '../mail/mail.service';
 import { Otp } from './entity/otp.entity';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { TokenService } from '../token/token.service';
-import { OtpType } from '../../shared/constants/enum';
+import { OtpType, UserRole } from '../../shared/constants/enum';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 
@@ -33,9 +33,15 @@ export class AuthService {
     email: string,
     password: string,
     mobile: string,
+    role: UserRole = UserRole.USER,
   ) {
+    const existingName = await this.usersService.findByName(name);
     const existingUser = await this.usersService.findByEmail(email);
     const existingMobileUser = await this.usersService.findByMobile(mobile);
+
+    if (existingName) {
+      throw new BadRequestException('Name already exists');
+    }
 
     if (existingMobileUser) {
       throw new BadRequestException('Mobile number already exists');
@@ -56,6 +62,7 @@ export class AuthService {
       email,
       mobile,
       password: hashedPassword,
+      role,
     });
 
     this.mailService

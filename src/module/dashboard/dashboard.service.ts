@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Order } from '../order/entity/order.entity';
 import { User } from '../user/entity/user.entity';
 import { Product } from '../product/entity/product.entity';
@@ -39,7 +39,10 @@ export class DashboardService {
     private categoryRepository: Repository<Category>,
   ) {}
 
-  async getOverview(query: DashboardQueryDto): Promise<DashboardOverviewDto> {
+  async getOverview(
+    query: DashboardQueryDto,
+    adminId?: string,
+  ): Promise<DashboardOverviewDto> {
     const [
       revenue,
       orders,
@@ -48,13 +51,28 @@ export class DashboardService {
       salesByCategory,
       popularFavorites,
     ] = await Promise.all([
-      this.getRevenueAnalytics(query),
-      this.getOrderStatistics(query),
-      this.getTopProducts({ ...query, limit: 5 }),
-      this.getRecentOrders({ ...query, limit: 5 }),
-      this.getSalesByCategory(query),
-      this.getPopularFavoriteProducts(),
+      this.getRevenueAnalytics(query, adminId),
+      this.getOrderStatistics(query, adminId),
+      this.getTopProducts({ ...query, limit: 5 }, adminId),
+      this.getRecentOrders({ ...query, limit: 5 }, adminId),
+      this.getSalesByCategory(query, adminId),
+      this.getPopularFavoriteProducts(adminId),
     ]);
+
+    const productCount = adminId
+      ? await this.productRepository.count({ where: { user: { id: adminId } } })
+      : await this.productRepository.count();
+
+    const customerCount = adminId
+      ? await this.userRepository
+          .createQueryBuilder('u')
+          .innerJoin('orders', 'o', 'o.user_id = u.id')
+          .innerJoin('order_items', 'oi', 'oi.order_id = o.id')
+          .innerJoin('products', 'p', 'p.id = oi.product_id')
+          .where('p.user_id = :adminId', { adminId })
+          .select('COUNT(DISTINCT u.id)', 'count')
+          .getRawOne()
+      : await this.userRepository.count();
 
     return {
       revenue,
@@ -63,14 +81,15 @@ export class DashboardService {
       recentOrders,
       salesByCategory,
       popularFavorites,
-      totalProducts: await this.productRepository.count(),
+      totalProducts: productCount,
       totalCategories: await this.categoryRepository.count(),
-      totalCustomers: await this.userRepository.count(),
+      totalCustomers: adminId ? parseInt(customerCount.count) : customerCount,
     };
   }
 
   async getRevenueAnalytics(
     query: DashboardQueryDto,
+    adminId?: string,
   ): Promise<RevenueAnalyticsDto> {
     const year = query.year ?? new Date().getFullYear();
     const month = query.month;
@@ -81,17 +100,29 @@ export class DashboardService {
 
     const endDate = month ? new Date(year, month, 1) : new Date(year + 1, 0, 1);
 
-    // Monthly revenue (current year)
-    const monthlyRevenue = await this.orderRepository
+    const queryBuilder = this.orderRepository
       .createQueryBuilder('o')
+      .leftJoin('o.items', 'oi')
+      .leftJoin('oi.product', 'p')
       .select('EXTRACT(MONTH FROM o.created_at)', 'month')
-      .addSelect('SUM(o.total_amount)', 'revenue')
-      .addSelect('COUNT(o.id)', 'orders')
       .where('o.status = :status', { status: Status.DELIVERED })
       .andWhere('o.created_at >= :start AND o.created_at < :end', {
         start: startDate,
         end: endDate,
-      })
+      });
+
+    if (adminId) {
+      queryBuilder
+        .addSelect('SUM(oi.price * oi.quantity)', 'revenue')
+        .addSelect('COUNT(DISTINCT o.id)', 'orders')
+        .andWhere('p.user_id = :adminId', { adminId });
+    } else {
+      queryBuilder
+        .addSelect('SUM(o.total_amount)', 'revenue')
+        .addSelect('COUNT(o.id)', 'orders');
+    }
+
+    const monthlyRevenue = await queryBuilder
       .groupBy('month')
       .orderBy('month')
       .getRawMany();
@@ -146,16 +177,28 @@ export class DashboardService {
     const totalOrders = monthlyData.reduce((s, m) => s + m.orders, 0);
 
     // Year-wise growth
-    const prevYearStats = await this.orderRepository
+    const prevYearQuery = this.orderRepository
       .createQueryBuilder('o')
-      .select('SUM(o.total_amount)', 'revenue')
-      .addSelect('COUNT(o.id)', 'orders')
+      .leftJoin('o.items', 'oi')
+      .leftJoin('oi.product', 'p')
       .where('o.status = :status', { status: Status.DELIVERED })
       .andWhere('o.created_at >= :s AND o.created_at < :e', {
         s: new Date(year - 1, 0, 1),
         e: new Date(year, 0, 1),
-      })
-      .getRawOne();
+      });
+
+    if (adminId) {
+      prevYearQuery
+        .select('SUM(oi.price * oi.quantity)', 'revenue')
+        .addSelect('COUNT(DISTINCT o.id)', 'orders')
+        .andWhere('p.user_id = :adminId', { adminId });
+    } else {
+      prevYearQuery
+        .select('SUM(o.total_amount)', 'revenue')
+        .addSelect('COUNT(o.id)', 'orders');
+    }
+
+    const prevYearStats = await prevYearQuery.getRawOne();
 
     const prevYearRevenue = Number(prevYearStats?.revenue || 0);
     const prevYearOrders = Number(prevYearStats?.orders || 0);
@@ -186,27 +229,41 @@ export class DashboardService {
 
   async getOrderStatistics(
     query: DashboardQueryDto,
+    adminId?: string,
   ): Promise<OrderStatisticsDto> {
     const { startDate, endDate, month, year } = query;
 
-    let dateFilter: any = {};
+    const queryBuilder = this.orderRepository
+      .createQueryBuilder('o')
+      .leftJoin('o.items', 'oi')
+      .leftJoin('oi.product', 'p');
+
     if (startDate && endDate) {
-      dateFilter = {
-        created_at: Between(new Date(startDate), new Date(endDate)),
-      };
+      queryBuilder.andWhere('o.created_at BETWEEN :start AND :end', {
+        start: new Date(startDate),
+        end: new Date(endDate),
+      });
     } else if (month && year) {
       const start = new Date(year, month - 1, 1);
       const end = new Date(year, month, 0, 23, 59, 59);
-      dateFilter = { created_at: Between(start, end) };
+      queryBuilder.andWhere('o.created_at BETWEEN :start AND :end', {
+        start,
+        end,
+      });
     } else if (year) {
       const start = new Date(year, 0, 1);
       const end = new Date(year, 11, 31, 23, 59, 59);
-      dateFilter = { created_at: Between(start, end) };
+      queryBuilder.andWhere('o.created_at BETWEEN :start AND :end', {
+        start,
+        end,
+      });
     }
 
-    const orders = await this.orderRepository.find({
-      where: dateFilter,
-    });
+    if (adminId) {
+      queryBuilder.andWhere('p.user_id = :adminId', { adminId });
+    }
+
+    const orders = await queryBuilder.getMany();
 
     const stats = {
       total: orders.length,
@@ -220,10 +277,13 @@ export class DashboardService {
     return stats;
   }
 
-  async getTopProducts(query: DashboardQueryDto): Promise<TopProductDto[]> {
+  async getTopProducts(
+    query: DashboardQueryDto,
+    adminId?: string,
+  ): Promise<TopProductDto[]> {
     const limit = query.limit || 5;
 
-    const topProducts = await this.orderItemRepository
+    const queryBuilder = this.orderItemRepository
       .createQueryBuilder('orderItem')
       .leftJoinAndSelect('orderItem.product', 'product')
       .leftJoin('orderItem.order', 'order')
@@ -233,7 +293,13 @@ export class DashboardService {
       .addSelect('SUM(orderItem.price * orderItem.quantity)', 'revenue')
       .where('order.status = :status', { status: Status.DELIVERED })
       .groupBy('product.id')
-      .addGroupBy('product.name')
+      .addGroupBy('product.name');
+
+    if (adminId) {
+      queryBuilder.andWhere('product.user_id = :adminId', { adminId });
+    }
+
+    const topProducts = await queryBuilder
       .orderBy('revenue', 'DESC')
       .limit(limit)
       .getRawMany();
@@ -250,17 +316,35 @@ export class DashboardService {
     }));
   }
 
-  async getRecentOrders(query: DashboardQueryDto): Promise<RecentOrderDto[]> {
+  async getRecentOrders(
+    query: DashboardQueryDto,
+    adminId?: string,
+  ): Promise<RecentOrderDto[]> {
     const limit = query.limit || 10;
 
-    const orders = await this.orderRepository.find({
-      relations: ['user', 'items', 'items.product'],
-      order: { created_at: 'DESC' },
-      take: limit,
-    });
+    const queryBuilder = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('product.user', 'vendor')
+      .orderBy('order.created_at', 'DESC')
+      .take(limit);
+
+    if (adminId) {
+      queryBuilder.andWhere('product.user_id = :adminId', { adminId });
+    }
+
+    const orders = await queryBuilder.getMany();
 
     return orders.map((order) => {
-      const firstItem = order.items[0];
+      // If we filtered by adminId, we should only consider items from that admin for display logic?
+      // Usually, recent orders shows the whole order if it contains user's product.
+      const displayItems = adminId
+        ? order.items.filter((i) => i.product.user?.id === adminId)
+        : order.items;
+
+      const firstItem = displayItems[0] || order.items[0];
       const productImages = firstItem?.product?.images;
       const firstImage = Array.isArray(productImages)
         ? productImages[0]
@@ -281,6 +365,7 @@ export class DashboardService {
 
   async getSalesByCategory(
     query: DashboardQueryDto,
+    adminId?: string,
   ): Promise<SalesByCategoryDto[]> {
     const year = query.year ?? new Date().getFullYear();
     const month = query.month;
@@ -291,7 +376,7 @@ export class DashboardService {
 
     const endDate = month ? new Date(year, month, 1) : new Date(year + 1, 0, 1);
 
-    const salesByCategory = await this.orderItemRepository
+    const queryBuilder = this.orderItemRepository
       .createQueryBuilder('orderItem')
       .leftJoin('orderItem.product', 'product')
       .leftJoin('product.category', 'category')
@@ -304,8 +389,13 @@ export class DashboardService {
         end: endDate,
       })
       .groupBy('category.name')
-      .orderBy('sales', 'DESC')
-      .getRawMany();
+      .orderBy('sales', 'DESC');
+
+    if (adminId) {
+      queryBuilder.andWhere('product.user_id = :adminId', { adminId });
+    }
+
+    const salesByCategory = await queryBuilder.getRawMany();
 
     const totalSales = salesByCategory.reduce(
       (sum, c) => sum + parseFloat(c.sales),
@@ -324,15 +414,23 @@ export class DashboardService {
     }));
   }
 
-  async getPopularFavoriteProducts(): Promise<FavoriteProductDto[]> {
-    return this.productRepository
+  async getPopularFavoriteProducts(
+    adminId?: string,
+  ): Promise<FavoriteProductDto[]> {
+    const queryBuilder = this.productRepository
       .createQueryBuilder('p')
       .innerJoin('favorites', 'f', 'f.product_id = p.id')
       .select('p.id', 'productId')
       .addSelect('p.name', 'productName')
       .addSelect('COUNT(f.id)::int', 'favoritescount')
       .groupBy('p.id')
-      .addGroupBy('p.name')
+      .addGroupBy('p.name');
+
+    if (adminId) {
+      queryBuilder.andWhere('p.user_id = :adminId', { adminId });
+    }
+
+    return queryBuilder
       .orderBy('favoritescount', 'DESC')
       .limit(10)
       .getRawMany();

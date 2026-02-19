@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { GetUser } from '../../core/decorator/get-user.decorator';
 import { ApiOperation } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
@@ -17,68 +18,82 @@ import { AuthGuard } from 'src/core/guard/auth.guard';
 import { UserRole } from 'src/shared/constants/enum';
 
 @Controller('dashboard')
-@UseGuards(AuthGuard, RolesGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('overview')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get complete dashboard overview' })
   async getOverview(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<DashboardOverviewDto> {
-    return this.dashboardService.getOverview(query);
+    return await this.dashboardService.getOverview(query, adminId);
   }
 
   @Get('revenue')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get revenue analytics with monthly breakdown' })
   async getRevenueAnalytics(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<RevenueAnalyticsDto> {
-    return this.dashboardService.getRevenueAnalytics(query);
+    return await this.dashboardService.getRevenueAnalytics(query, adminId);
   }
 
   @Get('orders/stats')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get order statistics by status' })
   async getOrderStatistics(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<OrderStatisticsDto> {
-    return this.dashboardService.getOrderStatistics(query);
+    return await this.dashboardService.getOrderStatistics(query, adminId);
   }
 
   @Get('products/top')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get top products by revenue' })
   async getTopProducts(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<TopProductDto[]> {
-    return this.dashboardService.getTopProducts(query);
+    return await this.dashboardService.getTopProducts(query, adminId);
   }
 
-  @Get('orders/recent')
+  @Get('recent-orders')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get recent orders' })
   async getRecentOrders(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<RecentOrderDto[]> {
-    return this.dashboardService.getRecentOrders(query);
+    return await this.dashboardService.getRecentOrders(query, adminId);
   }
 
   @Get('sales/category')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get sales breakdown by category' })
   async getSalesByCategory(
     @Query() query: DashboardQueryDto,
+    @GetUser('id') adminId: string,
   ): Promise<SalesByCategoryDto[]> {
-    return this.dashboardService.getSalesByCategory(query);
+    return await this.dashboardService.getSalesByCategory(query, adminId);
   }
 
   @Get('favorites/popular')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get popular products by favorites' })
-  async getPopularFavorites(): Promise<FavoriteProductDto[]> {
-    return this.dashboardService.getPopularFavoriteProducts();
+  async getPopularFavorites(
+    @GetUser('id') adminId: string,
+  ): Promise<FavoriteProductDto[]> {
+    return await this.dashboardService.getPopularFavoriteProducts(adminId);
   }
 }

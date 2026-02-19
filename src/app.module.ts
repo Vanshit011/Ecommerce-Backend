@@ -30,6 +30,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
 import { DashboardModule } from './module/dashboard/dashboard.module';
+import { ReviewModule } from './module/review/review.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { DashboardModule } from './module/dashboard/dashboard.module';
     SeederModule,
     EventsModule,
     DashboardModule,
+    ReviewModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],
