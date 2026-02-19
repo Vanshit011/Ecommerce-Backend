@@ -10,6 +10,10 @@ export class UsersService {
     private userRepo: Repository<User>,
   ) {}
 
+  findByName(name: string) {
+    return this.userRepo.findOne({ where: { name } });
+  }
+
   findByEmail(email: string) {
     return this.userRepo.findOne({ where: { email } });
   }

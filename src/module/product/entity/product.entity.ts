@@ -14,6 +14,7 @@ import { CartItem } from '../../cart/entity/cart.entity';
 import { ProductStatus } from '../../../shared/constants/enum';
 import { ProductImage } from './product_images.entity';
 import { ProductVariant } from './product-variant.entity';
+import { Review } from '../../review/entity/review.entity';
 
 @Entity('products')
 @Index(['created_at'])
@@ -67,4 +68,7 @@ export class Product extends BaseEntity {
     cascade: true,
   })
   variants: ProductVariant[];
+
+  @OneToMany(() => Review, (review) => review.product)
+  reviews: Review[];
 }

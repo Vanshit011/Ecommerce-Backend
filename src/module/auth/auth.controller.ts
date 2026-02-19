@@ -23,20 +23,34 @@ import {
   verifyForgotOtpSchema,
   resetPasswordSchema,
 } from './joi/auth.validation';
+import { UserRole } from '../../shared/constants/enum';
 import type { RequestWithUser } from '../../shared/constants/types';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('register')
+  @Post('register/admin')
   @UsePipes(new JoiValidationPipe(registerSchema))
-  register(@Body() dto: RegisterDto) {
+  registerAdmin(@Body() dto: RegisterDto) {
     return this.authService.register(
       dto.name,
       dto.email,
       dto.password,
       dto.mobile,
+      UserRole.ADMIN,
+    );
+  }
+
+  @Post('register/user')
+  @UsePipes(new JoiValidationPipe(registerSchema))
+  registerUser(@Body() dto: RegisterDto) {
+    return this.authService.register(
+      dto.name,
+      dto.email,
+      dto.password,
+      dto.mobile,
+      UserRole.USER,
     );
   }
 
