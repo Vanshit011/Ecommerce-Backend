@@ -45,15 +45,15 @@ export class ReviewController {
   }
   //get reviews single product
   @Get('product/:productId')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.USER)
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(UserRole.ADMIN, UserRole.USER)
   async getReviewsByProduct(@Param('productId') productId: string) {
     return await this.reviewService.getReviewsByProduct(productId);
   }
   //get average rating
   @Get('product/:productId/stats')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.USER)
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(UserRole.ADMIN, UserRole.USER)
   async getProductStats(@Param('productId') productId: string) {
     return await this.reviewService.getAverageRating(productId);
   }

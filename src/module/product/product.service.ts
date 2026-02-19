@@ -530,7 +530,7 @@ export class ProductService {
   // USER see all products
   async findAllForUsers(query: ProductQueryParams) {
     let { page, limit, skip } = query;
-    const { search, categories, sort } = query;
+    const { search, categories, sort, minPrice, maxPrice } = query;
 
     page = page || 1;
     limit = limit || 10;
@@ -565,15 +565,14 @@ export class ProductService {
       });
     }
 
-    //  PRICE RANGE - Filter by variant prices
-    // Temporarily disabled - needs proper subquery implementation
-    // if (minPrice !== undefined) {
-    //   qb.andWhere('variants.price >= :minPrice', { minPrice });
-    // }
+    // price range
+    if (minPrice !== undefined) {
+      qb.andWhere('variants.price >= :minPrice', { minPrice });
+    }
 
-    // if (maxPrice !== undefined) {
-    //   qb.andWhere('variants.price <= :maxPrice', { maxPrice });
-    // }
+    if (maxPrice !== undefined) {
+      qb.andWhere('variants.price <= :maxPrice', { maxPrice });
+    }
 
     //  SORTING
     switch (sort) {

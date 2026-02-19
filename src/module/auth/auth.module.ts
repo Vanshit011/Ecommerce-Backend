@@ -7,6 +7,8 @@ import { UsersModule } from '../user/user.module';
 import { MailModule } from '../mail/mail.module';
 import { Otp } from './entity/otp.entity';
 import { TokenModule } from '../token/token.module';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { GithubStrategy } from './strategies/github.strategy';
 
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import { TokenModule } from '../token/token.module';
     TokenModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy, GithubStrategy],
   exports: [AuthService, TokenModule],
 })
 export class AuthModule {}

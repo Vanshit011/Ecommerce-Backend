@@ -1,12 +1,16 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Req,
+  Res,
   UnauthorizedException,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,10 +29,14 @@ import {
 } from './joi/auth.validation';
 import { UserRole } from '../../shared/constants/enum';
 import type { RequestWithUser } from '../../shared/constants/types';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+  ) {}
 
   @Post('register/admin')
   @UsePipes(new JoiValidationPipe(registerSchema))
@@ -101,5 +109,45 @@ export class AuthController {
     return {
       message: 'Logged out successfully',
     };
+  }
+
+  // --- SOCIAL LOGIN ---
+
+  @Get('google')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuth() {
+    // Redirects to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
+    const result = await this.authService.validateSocialUser(req.user);
+
+    const frontendUrl =
+      this.configService.get<string>('ECOMMERCE_FRONTEND') || '';
+
+    return res.redirect(
+      `${frontendUrl}/login?token=${result.accessToken}&role=${result.user.role}`,
+    );
+  }
+
+  @Get('github')
+  @UseGuards(PassportAuthGuard('github'))
+  async githubAuth() {
+    // Redirects to GitHub
+  }
+
+  @Get('github/callback')
+  @UseGuards(PassportAuthGuard('github'))
+  async githubAuthRedirect(@Req() req: any, @Res() res: Response) {
+    const result = await this.authService.validateSocialUser(req.user);
+
+    const frontendUrl =
+      this.configService.get<string>('ECOMMERCE_FRONTEND') || '';
+
+    return res.redirect(
+      `${frontendUrl}/login?token=${result.accessToken}&role=${result.user.role}`,
+    );
   }
 }
