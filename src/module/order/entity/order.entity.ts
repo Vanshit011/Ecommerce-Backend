@@ -12,6 +12,7 @@ import { User } from '../../user/entity/user.entity';
 import { Address } from '../../address/entity/address.entity';
 import { OrderItem } from './order-item.entity';
 import { Payment } from '../../payments/entity/payments.entity';
+import { Coupon } from '../../coupon/entity/coupon.entity';
 
 @Entity('orders')
 @Index(['created_at'])
@@ -34,6 +35,9 @@ export class Order extends BaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   total_amount: number;
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  discount_amount: number;
+
   @Index()
   @Column({
     type: 'enum',
@@ -45,6 +49,10 @@ export class Order extends BaseEntity {
   @Index()
   @Column({ type: 'varchar', length: 255, nullable: true })
   stripe_payment_intent_id: string;
+
+  @ManyToOne(() => Coupon, { nullable: true })
+  @JoinColumn({ name: 'coupon_id' })
+  coupon: Coupon;
 
   @OneToMany(() => Payment, (payment) => payment.order)
   payments: Payment[];

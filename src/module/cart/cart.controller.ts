@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Patch,
   Query,
 } from '@nestjs/common';
 import { Controller } from '@nestjs/common/decorators/core/controller.decorator';
@@ -18,10 +19,43 @@ import { GetUser } from '../../core/decorator/get-user.decorator';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
 import { addToCartSchema, updateQtySchema } from './joi/cart.validation';
+import { ApplyCouponDto } from './dto/apply-coupon.dto';
 
 @Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
+
+  // get cart
+  @Get()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  getCart(@GetUser('id') userId: string) {
+    return this.cartService.getMyCart(userId);
+  }
+
+  // delete ALL
+  @Delete()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  clear(@GetUser('id') userId: string) {
+    return this.cartService.clearCart(userId);
+  }
+
+  // apply coupon to cart
+  @Post('apply-coupon')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  applyCoupon(@GetUser('id') userId: string, @Body() body: ApplyCouponDto) {
+    return this.cartService.applyCoupon(userId, body);
+  }
+
+  // remove coupon from cart (Specific route before wildcard)
+  @Patch('remove-coupon')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  removeCoupon(@GetUser('id') userId: string) {
+    return this.cartService.removeCoupon(userId);
+  }
 
   // add cart
   @Post(':productId')
@@ -39,14 +73,6 @@ export class CartController {
       body.quantity,
       body.variant_id,
     );
-  }
-
-  // get cart
-  @Get()
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  getCart(@GetUser('id') userId: string) {
-    return this.cartService.getMyCart(userId);
   }
 
   // update qty
@@ -81,13 +107,5 @@ export class CartController {
     @GetUser('id') userId: string,
   ) {
     return this.cartService.removeCartItem(userId, productId, variantId);
-  }
-
-  // delete ALL
-  @Delete()
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  clear(@GetUser('id') userId: string) {
-    return this.cartService.clearCart(userId);
   }
 }

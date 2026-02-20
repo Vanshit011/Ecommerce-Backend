@@ -13,6 +13,8 @@ import { OrderCronService } from './order-cron.service';
 import { Payment } from '../payments/entity/payments.entity';
 import { Product } from '../product/entity/product.entity';
 import { ProductVariant } from '../product/entity/product-variant.entity';
+import { CouponModule } from '../coupon/coupon.module';
+import { User } from '../user/entity/user.entity';
 
 @Module({
   imports: [
@@ -23,11 +25,13 @@ import { ProductVariant } from '../product/entity/product-variant.entity';
       Payment,
       Product,
       ProductVariant,
+      User,
     ]),
     CartModule,
     AddressModule,
     AuthModule,
     StripeModule,
+    CouponModule,
   ],
   providers: [OrderService, OrderCronService],
   controllers: [OrderController],

@@ -35,4 +35,7 @@ export class CartItem extends BaseEntity {
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price_snapshot: number;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  active_cart_coupon: string | null;
 }
