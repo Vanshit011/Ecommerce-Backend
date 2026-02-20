@@ -25,8 +25,11 @@ export class OrderController {
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  create(@GetUser('id') userId: string) {
-    return this.orderService.createFromCart(userId);
+  create(
+    @GetUser('id') userId: string,
+    @Body('couponCode') couponCode?: string,
+  ) {
+    return this.orderService.createFromCart(userId, couponCode);
   }
   //user all order
   @Get('my')

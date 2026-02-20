@@ -17,6 +17,9 @@ import { Payment } from '../payments/entity/payments.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { Product } from '../product/entity/product.entity';
 import { ProductVariant } from '../product/entity/product-variant.entity';
+import { CouponService } from '../coupon/coupon.service';
+import { Coupon } from '../coupon/entity/coupon.entity';
+import { User } from '../user/entity/user.entity';
 
 @Injectable()
 export class OrderService {
@@ -35,12 +38,16 @@ export class OrderService {
     private paymentRepo: Repository<Payment>,
 
     private stripeService: StripeService,
+    private couponService: CouponService,
+
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
 
   //USER SIDE
 
   // CREATE ORDER FROM CART
-  async createFromCart(userId: string) {
+  async createFromCart(userId: string, couponCode?: string) {
     const cart = await this.cartService.getMyCart(userId);
 
     if (!cart.items.length) {
@@ -64,10 +71,32 @@ export class OrderService {
       total += Number(item.price_snapshot) * item.quantity;
     }
 
+    let discountAmount = 0;
+    let coupon: Coupon | undefined = undefined;
+
+    // Use provided code or fallback to active coupon from cart items
+    let effectiveCouponCode = couponCode;
+    if (!effectiveCouponCode) {
+      effectiveCouponCode = cart.items[0]?.active_cart_coupon || undefined;
+    }
+
+    if (effectiveCouponCode) {
+      const validation = await this.couponService.validateCoupon(
+        effectiveCouponCode,
+        total,
+      );
+      discountAmount = validation.discountAmount;
+      coupon = validation.coupon;
+    }
+
+    const finalAmount = Math.max(0, total - discountAmount);
+
     const order = await this.orderRepo.save({
       user: { id: userId },
       address: { id: address.id },
-      total_amount: total,
+      total_amount: finalAmount,
+      discount_amount: discountAmount,
+      coupon: coupon,
       status: Status.PENDING,
     });
 
@@ -129,6 +158,7 @@ export class OrderService {
             product: true,
             variant: true,
           },
+          coupon: true,
         },
       });
 
@@ -150,6 +180,11 @@ export class OrderService {
       //  update order
       order.status = Status.CONFIRMED;
       await orderRepo.save(order);
+
+      // Increment coupon usage if applied
+      if (order.coupon) {
+        await this.couponService.incrementUsage(order.coupon.id, manager);
+      }
 
       //  clear cart after payment success
       if (order.user?.id) {
@@ -181,6 +216,7 @@ export class OrderService {
         'items.product.images',
         'items.product.category',
         'address',
+        'coupon',
       ],
       order: {
         created_at: 'DESC',
@@ -202,6 +238,7 @@ export class OrderService {
         'items.product',
         'items.product.images',
         'items.product.category',
+        'coupon',
       ],
     });
 

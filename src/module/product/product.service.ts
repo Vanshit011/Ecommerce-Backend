@@ -577,10 +577,10 @@ export class ProductService {
     //  SORTING
     switch (sort) {
       case 'price_asc':
+        qb.orderBy('variants.price', 'ASC');
+        break;
       case 'price_desc':
-        // Price sorting requires complex subqueries with variants
-        // For now, fall back to newest
-        qb.orderBy('products.created_at', 'DESC');
+        qb.orderBy('variants.price', 'DESC');
         break;
 
       case 'newest':

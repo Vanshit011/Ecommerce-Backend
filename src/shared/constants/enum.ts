@@ -21,3 +21,8 @@ export enum ProductStatus {
   OUTOFSTOCK = 'OUTOFSTOCK',
   PREORDER = 'PREORDER',
 }
+
+export enum DiscountType {
+  PERCENTAGE = 'PERCENTAGE',
+  FIXED = 'FIXED',
+}

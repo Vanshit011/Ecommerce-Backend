@@ -31,6 +31,7 @@ import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
 import { DashboardModule } from './module/dashboard/dashboard.module';
 import { ReviewModule } from './module/review/review.module';
+import { CouponModule } from './module/coupon/coupon.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ReviewModule } from './module/review/review.module';
     EventsModule,
     DashboardModule,
     ReviewModule,
+    CouponModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],
