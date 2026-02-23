@@ -150,9 +150,11 @@ export class CartService {
 
     if (activeCouponCode) {
       try {
+        const productIds = items.map((i) => i.product.id);
         const validation = await this.couponService.validateCoupon(
           activeCouponCode,
           subtotal,
+          productIds,
         );
         discountAmount = validation.discountAmount;
         coupon = validation.coupon;
@@ -182,8 +184,13 @@ export class CartService {
   async applyCoupon(userId: string, dto: ApplyCouponDto) {
     const cart = await this.getMyCart(userId);
 
-    // Validate coupon against current subtotal
-    await this.couponService.validateCoupon(dto.code, cart.subtotal);
+    // Validate coupon against current subtotal and products
+    const productIds = cart.items.map((i) => i.product.id);
+    await this.couponService.validateCoupon(
+      dto.code,
+      cart.subtotal,
+      productIds,
+    );
 
     // Save coupon to ALL cart items for this user
     await this.cartRepo

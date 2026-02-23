@@ -47,9 +47,9 @@ describe('CouponController', () => {
       };
       mockCouponService.createCoupon.mockResolvedValue({ id: '1', ...dto });
 
-      const result = await controller.create(dto);
+      const result = await controller.create('admin1', dto as any);
 
-      expect(service.createCoupon).toHaveBeenCalledWith(dto);
+      expect(service.createCoupon).toHaveBeenCalledWith('admin1', dto);
       expect(result).toHaveProperty('id');
     });
   });
@@ -58,9 +58,9 @@ describe('CouponController', () => {
     it('should call service.findAll', async () => {
       mockCouponService.findAll.mockResolvedValue([]);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll('admin1', 'ADMIN' as any);
 
-      expect(service.findAll).toHaveBeenCalled();
+      expect(service.findAll).toHaveBeenCalledWith('admin1', 'ADMIN');
       expect(Array.isArray(result)).toBe(true);
     });
   });

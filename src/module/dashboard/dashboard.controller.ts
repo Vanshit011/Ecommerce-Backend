@@ -65,7 +65,7 @@ export class DashboardController {
     return await this.dashboardService.getTopProducts(query, adminId);
   }
 
-  @Get('recent-orders')
+  @Get('orders/recent')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get recent orders' })

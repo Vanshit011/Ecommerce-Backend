@@ -81,9 +81,11 @@ export class OrderService {
     }
 
     if (effectiveCouponCode) {
+      const productIds = cart.items.map((i) => i.product.id);
       const validation = await this.couponService.validateCoupon(
         effectiveCouponCode,
         total,
+        productIds,
       );
       discountAmount = validation.discountAmount;
       coupon = validation.coupon;

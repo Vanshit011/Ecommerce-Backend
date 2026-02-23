@@ -7,6 +7,9 @@ import {
   IsNumber,
   IsDate,
   IsBoolean,
+  IsOptional,
+  IsArray,
+  IsUUID,
 } from 'class-validator';
 
 export class createCouponDto {
@@ -54,4 +57,14 @@ export class createCouponDto {
   @IsNotEmpty()
   @IsBoolean()
   is_active: boolean;
+
+  @ApiProperty({
+    example: ['uuid1', 'uuid2'],
+    required: false,
+    description: 'Product IDs this coupon applies to. Omit for global coupon.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  product_ids?: string[];
 }
