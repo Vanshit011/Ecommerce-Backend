@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CouponService } from './coupon.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Coupon } from './entity/coupon.entity';
-import { DiscountType } from '../../shared/constants/enum';
+import { Product } from '../product/entity/product.entity';
+import { DiscountType, UserRole } from '../../shared/constants/enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { updateCouponDto } from './dto/update-coupon.dto';
 
@@ -23,6 +24,13 @@ describe('CouponService', () => {
             find: jest.fn(),
             increment: jest.fn(),
             softDelete: jest.fn(),
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Product),
+          useValue: {
+            findBy: jest.fn(),
           },
         },
       ],
@@ -63,16 +71,20 @@ describe('CouponService', () => {
   describe('findAll', () => {
     it('should filter by userId if provided', async () => {
       repo.find.mockResolvedValue([]);
-      await service.findAll('admin1');
+      await service.findAll('admin1', UserRole.ADMIN);
       expect(repo.find).toHaveBeenCalledWith({
         where: { user: { id: 'admin1' } },
+        relations: ['products'],
       });
     });
 
     it('should return all if no userId provided', async () => {
       repo.find.mockResolvedValue([]);
-      await service.findAll();
-      expect(repo.find).toHaveBeenCalledWith();
+      await service.findAll('admin1', UserRole.USER);
+      expect(repo.find).toHaveBeenCalledWith({
+        where: { is_active: true, deleted_at: expect.anything() },
+        relations: ['products'],
+      });
     });
   });
 

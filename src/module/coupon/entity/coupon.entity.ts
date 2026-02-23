@@ -1,7 +1,16 @@
-import { Entity, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  Index,
+  ManyToOne,
+  ManyToMany,
+  JoinColumn,
+  JoinTable,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { DiscountType } from '../../../shared/constants/enum';
 import { User } from '../../user/entity/user.entity';
+import { Product } from '../../product/entity/product.entity';
 
 @Entity('coupons')
 @Index(['code', 'is_active'], { unique: true })
@@ -44,4 +53,12 @@ export class Coupon extends BaseEntity {
   @ManyToOne(() => User, (user) => user.coupons, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @ManyToMany(() => Product, { eager: false })
+  @JoinTable({
+    name: 'coupon_products',
+    joinColumn: { name: 'coupon_id' },
+    inverseJoinColumn: { name: 'product_id' },
+  })
+  products: Product[];
 }

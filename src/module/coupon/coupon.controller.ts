@@ -42,8 +42,11 @@ export class CouponController {
   @Get()
   @Roles(UserRole.ADMIN, UserRole.USER)
   @UseGuards(AuthGuard, RolesGuard)
-  async findAll(@GetUser('id') userId: string) {
-    return this.couponService.findAll(userId);
+  async findAll(
+    @GetUser('id') userId: string,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.couponService.findAll(userId, role);
   }
 
   @Patch(':id')

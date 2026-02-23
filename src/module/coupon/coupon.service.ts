@@ -4,9 +4,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository, EntityManager, IsNull, In } from 'typeorm';
 import { Coupon } from './entity/coupon.entity';
-import { DiscountType } from '../../shared/constants/enum';
+import { Product } from '../product/entity/product.entity';
+import { DiscountType, UserRole } from '../../shared/constants/enum';
 import { createCouponDto } from './dto/create-coupon.dto';
 import { updateCouponDto } from './dto/update-coupon.dto';
 
@@ -15,6 +16,9 @@ export class CouponService {
   constructor(
     @InjectRepository(Coupon)
     private couponRepo: Repository<Coupon>,
+
+    @InjectRepository(Product)
+    private productRepo: Repository<Product>,
   ) {}
 
   async createCoupon(userId: string, data: createCouponDto) {
@@ -24,25 +28,47 @@ export class CouponService {
     if (existing) {
       throw new BadRequestException('Coupon code already exists');
     }
+
+    // Extract product_ids before creating entity
+    const { product_ids, ...couponData } = data;
+
     const coupon = this.couponRepo.create({
-      ...data,
+      ...couponData,
       user: { id: userId },
     });
+
+    // Attach products if provided
+    if (product_ids && product_ids.length > 0) {
+      const products = await this.productRepo.findBy({
+        id: In(product_ids),
+      });
+      if (products.length !== product_ids.length) {
+        throw new BadRequestException('One or more product IDs are invalid');
+      }
+      coupon.products = products;
+    }
+
     return this.couponRepo.save(coupon);
   }
 
-  async findAll(userId?: string) {
-    if (userId) {
+  async findAll(userId: string, role: UserRole) {
+    if (role === UserRole.ADMIN) {
       return this.couponRepo.find({
         where: { user: { id: userId } },
+        relations: ['products'],
       });
     }
-    return this.couponRepo.find();
+
+    return this.couponRepo.find({
+      where: { is_active: true, deleted_at: IsNull() },
+      relations: ['products'],
+    });
   }
 
   async updateCoupon(id: string, userId: string, data: updateCouponDto) {
     const coupon = await this.couponRepo.findOne({
       where: { id, user: { id: userId } },
+      relations: ['products'],
     });
     if (!coupon) {
       throw new NotFoundException(
@@ -59,7 +85,27 @@ export class CouponService {
       }
     }
 
-    Object.assign(coupon, data);
+    // Extract product_ids before assigning
+    const { product_ids, ...couponData } = data;
+
+    Object.assign(coupon, couponData);
+
+    // Update product associations if provided
+    if (product_ids !== undefined) {
+      if (product_ids.length > 0) {
+        const products = await this.productRepo.findBy({
+          id: In(product_ids),
+        });
+        if (products.length !== product_ids.length) {
+          throw new BadRequestException('One or more product IDs are invalid');
+        }
+        coupon.products = products;
+      } else {
+        // Empty array = make it a global coupon
+        coupon.products = [];
+      }
+    }
+
     return this.couponRepo.save(coupon);
   }
 
@@ -75,8 +121,11 @@ export class CouponService {
     return this.couponRepo.softDelete(id);
   }
 
-  async validateCoupon(code: string, cartTotal: number) {
-    const coupon = await this.couponRepo.findOne({ where: { code } });
+  async validateCoupon(code: string, cartTotal: number, productIds?: string[]) {
+    const coupon = await this.couponRepo.findOne({
+      where: { code },
+      relations: ['products'],
+    });
 
     if (!coupon) {
       throw new NotFoundException('Invalid coupon code');
@@ -102,6 +151,17 @@ export class CouponService {
       throw new BadRequestException(
         `Minimum order amount of ${coupon.min_order_amount} required`,
       );
+    }
+
+    // Product-specific validation
+    if (coupon.products && coupon.products.length > 0 && productIds) {
+      const couponProductIds = coupon.products.map((p) => p.id);
+      const hasMatch = productIds.some((pid) => couponProductIds.includes(pid));
+      if (!hasMatch) {
+        throw new BadRequestException(
+          'Coupon is not valid for the products in your cart',
+        );
+      }
     }
 
     let discountAmount = 0;
