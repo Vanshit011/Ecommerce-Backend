@@ -1,6 +1,7 @@
-import { Entity, Column, Index } from 'typeorm';
+import { Entity, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { DiscountType } from '../../../shared/constants/enum';
+import { User } from '../../user/entity/user.entity';
 
 @Entity('coupons')
 @Index(['code', 'is_active'], { unique: true })
@@ -38,4 +39,9 @@ export class Coupon extends BaseEntity {
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.coupons, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }

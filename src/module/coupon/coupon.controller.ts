@@ -3,6 +3,9 @@ import {
   Get,
   Post,
   Body,
+  Patch,
+  Delete,
+  Param,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
@@ -14,8 +17,10 @@ import { UserRole } from '../../shared/constants/enum';
 import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
 import { GetUser } from '../../core/decorator/get-user.decorator';
 import { createCouponDto } from './dto/create-coupon.dto';
+import { updateCouponDto } from './dto/update-coupon.dto';
 import {
   createCouponSchema,
+  updateCouponSchema,
   validateCouponSchema,
 } from './joi/coupon.validation';
 
@@ -28,17 +33,36 @@ export class CouponController {
   @UseGuards(AuthGuard, RolesGuard)
   @UsePipes(new JoiValidationPipe(createCouponSchema))
   async create(
-    @GetUser() userId: string,
+    @GetUser('id') userId: string,
     @Body() createCouponDto: createCouponDto,
   ) {
     return this.couponService.createCoupon(userId, createCouponDto);
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.USER)
+  @UseGuards(AuthGuard, RolesGuard)
+  async findAll(@GetUser('id') userId: string) {
+    return this.couponService.findAll(userId);
+  }
+
+  @Patch(':id')
   @Roles(UserRole.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  async findAll() {
-    return this.couponService.findAll();
+  @UsePipes(new JoiValidationPipe(updateCouponSchema))
+  async update(
+    @Param('id') id: string,
+    @GetUser('id') userId: string,
+    @Body() updateCouponDto: updateCouponDto,
+  ) {
+    return this.couponService.updateCoupon(id, userId, updateCouponDto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  async remove(@Param('id') id: string, @GetUser('id') userId: string) {
+    return this.couponService.removeCoupon(id, userId);
   }
 
   @Post('validate')

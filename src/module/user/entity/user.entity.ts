@@ -10,6 +10,7 @@ import { Address } from '../../address/entity/address.entity';
 import { Order } from '../../order/entity/order.entity';
 import { Payment } from '../../payments/entity/payments.entity';
 import { Review } from '../../review/entity/review.entity';
+import { Coupon } from '../../../module/coupon/entity/coupon.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -67,5 +68,8 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Review, (review) => review.user)
   reviews: Review[];
+
+  @OneToMany(() => Coupon, (coupon) => coupon.user)
+  coupons: Coupon[];
 }
 export { UserRole };
