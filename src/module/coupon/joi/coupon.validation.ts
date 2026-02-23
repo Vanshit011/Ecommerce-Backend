@@ -15,6 +15,20 @@ export const createCouponSchema = Joi.object({
   is_active: Joi.boolean().optional(),
 }).options({ convert: true });
 
+export const updateCouponSchema = Joi.object({
+  code: Joi.string().trim().uppercase().optional(),
+  discount_type: Joi.string()
+    .valid(...Object.values(DiscountType))
+    .optional(),
+  discount_value: Joi.number().positive().optional(),
+  min_order_amount: Joi.number().min(0).optional(),
+  max_discount_amount: Joi.number().positive().optional(),
+  usage_limit: Joi.number().integer().min(0).optional(),
+  start_date: Joi.date().iso().optional(),
+  end_date: Joi.date().iso().min(Joi.ref('start_date')).optional(),
+  is_active: Joi.boolean().optional(),
+}).options({ convert: true });
+
 export const validateCouponSchema = Joi.object({
   code: Joi.string().trim().uppercase().required(),
   cartTotal: Joi.number().positive().required(),

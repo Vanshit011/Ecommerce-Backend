@@ -8,6 +8,7 @@ import { Repository, EntityManager } from 'typeorm';
 import { Coupon } from './entity/coupon.entity';
 import { DiscountType } from '../../shared/constants/enum';
 import { createCouponDto } from './dto/create-coupon.dto';
+import { updateCouponDto } from './dto/update-coupon.dto';
 
 @Injectable()
 export class CouponService {
@@ -23,20 +24,55 @@ export class CouponService {
     if (existing) {
       throw new BadRequestException('Coupon code already exists');
     }
-    const coupon = this.couponRepo.create(data);
+    const coupon = this.couponRepo.create({
+      ...data,
+      user: { id: userId },
+    });
     return this.couponRepo.save(coupon);
   }
 
-  async findAll() {
+  async findAll(userId?: string) {
+    if (userId) {
+      return this.couponRepo.find({
+        where: { user: { id: userId } },
+      });
+    }
     return this.couponRepo.find();
   }
 
-  async findByCode(code: string) {
-    const coupon = await this.couponRepo.findOne({ where: { code } });
+  async updateCoupon(id: string, userId: string, data: updateCouponDto) {
+    const coupon = await this.couponRepo.findOne({
+      where: { id, user: { id: userId } },
+    });
     if (!coupon) {
-      throw new NotFoundException('Coupon not found');
+      throw new NotFoundException(
+        'Coupon not found or you do not have permission',
+      );
     }
-    return coupon;
+
+    if (data.code) {
+      const existing = await this.couponRepo.findOne({
+        where: { code: data.code },
+      });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException('Coupon code already exists');
+      }
+    }
+
+    Object.assign(coupon, data);
+    return this.couponRepo.save(coupon);
+  }
+
+  async removeCoupon(id: string, userId: string) {
+    const coupon = await this.couponRepo.findOne({
+      where: { id, user: { id: userId } },
+    });
+    if (!coupon) {
+      throw new NotFoundException(
+        'Coupon not found or you do not have permission',
+      );
+    }
+    return this.couponRepo.softDelete(id);
   }
 
   async validateCoupon(code: string, cartTotal: number) {
