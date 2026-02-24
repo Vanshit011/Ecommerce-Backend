@@ -3,8 +3,9 @@ import { CouponController } from './coupon.controller';
 import { CouponService } from './coupon.service';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
+import { beforeEach, describe } from 'node:test';
 
-describe('CouponController', () => {
+void describe('CouponController', () => {
   let controller: CouponController;
   let service: CouponService;
 

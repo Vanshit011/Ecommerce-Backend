@@ -19,9 +19,9 @@ export class JoiValidationPipe implements PipeTransform {
 
     const { error, value: validated } = this.schema.validate(value, {
       abortEarly: false,
-      convert: true, // ✅ string → number/boolean
-      allowUnknown: true, // ✅ Allow unexpected fields
-      stripUnknown: true, // ✅ Strip them from the output
+      convert: true,
+      allowUnknown: true,
+      stripUnknown: true,
     });
 
     if (error) {
