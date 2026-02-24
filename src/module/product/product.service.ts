@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not, ILike } from 'typeorm';
 import { Product } from '../product/entity/product.entity';
 import { CreateProductDto } from './dto/product/create-product.dto';
 import { Category } from '../categories/entity/category.entity';
@@ -17,6 +17,8 @@ import { BulkUpdateVariantItemDto } from './dto/variant/bulk-update-variant.dto'
 import { UpdateProductDto } from './dto/product/update-product.dto';
 import { CreateVariantDto } from './dto/variant/create-variant.dto';
 import sharp from 'sharp';
+import { GenerateMetadataDto } from './dto/product/generate-metadata.dto';
+import { GeminiService } from '../ai/gemini.service';
 
 @Injectable()
 export class ProductService {
@@ -29,6 +31,7 @@ export class ProductService {
     private readonly imageRepo: Repository<ProductImage>,
     @InjectRepository(ProductVariant)
     private readonly variantRepo: Repository<ProductVariant>,
+    private readonly geminiService: GeminiService,
   ) {}
 
   //--------------ADMIN-------------//
@@ -46,63 +49,59 @@ export class ProductService {
       throw new BadRequestException('Invalid category selected');
     }
 
-    return this.productRepo.manager
-      .transaction(async (manager) => {
-        const productRepo = manager.getRepository(Product);
-        const imageRepo = manager.getRepository(ProductImage);
-        const variantRepo = manager.getRepository(ProductVariant);
+    return this.productRepo.manager.transaction(async (manager) => {
+      const productRepo = manager.getRepository(Product);
+      const imageRepo = manager.getRepository(ProductImage);
+      const variantRepo = manager.getRepository(ProductVariant);
 
-        const product = productRepo.create({
-          ...rest,
-          user: { id: userId },
-          category,
-        });
-
-        const savedProduct = await productRepo.save(product);
-
-        //  Save images
-        if (files?.length) {
-          const uploadResults = await Promise.all(
-            files.map((file) => uploadImage(file.buffer, 'ecommerce/products')),
-          );
-
-          const images = uploadResults.map((result, index) =>
-            imageRepo.create({
-              product: savedProduct,
-              url: result.url,
-              image_public_id: result.publicId,
-              is_main: index === Number(main_image_index),
-            }),
-          );
-
-          await imageRepo.save(images);
-        }
-
-        //  Save variants
-        if (variants && variants.length > 0) {
-          const productVariants = variants.map((v) =>
-            variantRepo.create({
-              color: v.color,
-              size: v.size,
-              price: v.price,
-              stock_qty: v.stock_qty,
-              sku: v.sku,
-              product: savedProduct,
-            }),
-          );
-
-          await variantRepo.save(productVariants);
-        }
-
-        //  Return product WITH variants
-        return productRepo.findOne({
-          where: { id: savedProduct.id },
-          relations: ['images', 'category', 'variants'],
-        });
-      })
-      .finally(() => {
-        console.timeEnd('TOTAL_CREATE_PRODUCT');
+      const product = productRepo.create({
+        ...rest,
+        user: { id: userId },
+        category,
       });
+
+      const savedProduct = await productRepo.save(product);
+
+      //  Save images
+      if (files?.length) {
+        const uploadResults = await Promise.all(
+          files.map((file) => uploadImage(file.buffer, 'ecommerce/products')),
+        );
+
+        const images = uploadResults.map((result, index) =>
+          imageRepo.create({
+            product: savedProduct,
+            url: result.url,
+            image_public_id: result.publicId,
+            is_main: index === Number(main_image_index),
+          }),
+        );
+
+        await imageRepo.save(images);
+      }
+
+      //  Save variants
+      if (variants && variants.length > 0) {
+        const productVariants = variants.map((v) =>
+          variantRepo.create({
+            color: v.color,
+            size: v.size,
+            price: v.price,
+            stock_qty: v.stock_qty,
+            sku: v.sku,
+            product: savedProduct,
+          }),
+        );
+
+        await variantRepo.save(productVariants);
+      }
+
+      //  Return product WITH variants
+      return productRepo.findOne({
+        where: { id: savedProduct.id },
+        relations: ['images', 'category', 'variants'],
+      });
+    });
   }
 
   // admin see only own products
@@ -626,5 +625,171 @@ export class ProductService {
     }
 
     return product;
+  }
+
+  async generateMetadata(dto: GenerateMetadataDto) {
+    const { name, brand, category, base_description } = dto;
+
+    if (!this.geminiService.isConfigured()) {
+      return {
+        name,
+        description: `High-quality ${brand} ${name} in the ${category || 'general'} section.`,
+        tags: [brand, category || 'product', 'new-arrival'],
+      };
+    }
+
+    const prompt = `
+      Product Name: ${name}
+      Brand: ${brand}
+      Category: ${category || 'General'}
+      Current Description: ${base_description || 'None provided'}
+
+      Generate a compelling, SEO-friendly product description (approx 150 words) and a list of 5-8 relevant tags.
+      Take the Brand and Category into account for maximum relevance.
+      Return the response strictly as a JSON object with keys "description" (string) and "tags" (array of strings).
+    `;
+
+    try {
+      return await this.geminiService.generateJsonResponse<{
+        description: string;
+        tags: string[];
+      }>(prompt);
+    } catch (error) {
+      console.error('Metadata Generation Error:', error);
+      return {
+        name,
+        description: `Excellent ${name} by ${brand} in the ${category} category.`,
+        tags: [brand, category || 'product'],
+      };
+    }
+  }
+
+  // recommendation logic for users (Rule-based: Improved relevance)
+  async getRecommendations(id: string) {
+    const product = await this.productRepo.findOne({
+      where: { id, is_active: true },
+      relations: ['category'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    //  Try AI First
+    if (this.geminiService.isConfigured()) {
+      try {
+        const candidates = await this.productRepo.find({
+          where: { is_active: true, id: Not(id) },
+          relations: ['category'],
+          take: 20,
+        });
+
+        const candidateInfo = candidates.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category?.name,
+        }));
+
+        const prompt = `
+          Target Product: ${product.name} (Category: ${product.category?.name})
+          Candidates: ${JSON.stringify(candidateInfo)}
+
+          Select the top 4 most relevant or complementary product IDs from the candidates.
+          Return ONLY a JSON array of strings.
+        `;
+
+        const recommendedIds =
+          await this.geminiService.generateJsonResponse<string[]>(prompt);
+
+        if (Array.isArray(recommendedIds) && recommendedIds.length > 0) {
+          return await this.productRepo.find({
+            where: { id: In(recommendedIds), is_active: true },
+            relations: ['category', 'images', 'variants'],
+          });
+        }
+      } catch (error) {
+        console.warn('AI Recommendation failed, falling back to rules:', error);
+      }
+    }
+
+    //  FALLBACK: Rule-based Logic (Existing logic below)
+    const categoryId = product.category?.id;
+    const brand = product.brand;
+    const nameKeywords = product.name.split(' ').filter((k) => k.length > 2);
+
+    // 1. Same Category AND same Brand
+    const tier1 = await this.productRepo.find({
+      where: {
+        category: { id: categoryId },
+        brand: brand,
+        id: Not(id),
+        is_active: true,
+      },
+      relations: ['category', 'images', 'variants'],
+      take: 4,
+    });
+
+    let results = [...tier1];
+
+    // 2. Same Category (different brand)
+    if (results.length < 4) {
+      const tier2 = await this.productRepo.find({
+        where: {
+          category: { id: categoryId },
+          id: Not(In([id, ...results.map((p) => p.id)])),
+          is_active: true,
+        },
+        relations: ['category', 'images', 'variants'],
+        take: 4 - results.length,
+      });
+      results = [...results, ...tier2];
+    }
+
+    // 3. Name similarity (using keywords)
+    if (results.length < 4 && nameKeywords.length > 0) {
+      for (const keyword of nameKeywords) {
+        if (results.length >= 4) break;
+        const tier3 = await this.productRepo.find({
+          where: {
+            name: ILike(`%${keyword}%`),
+            id: Not(In([id, ...results.map((p) => p.id)])),
+            is_active: true,
+          },
+          relations: ['category', 'images', 'variants'],
+          take: 4 - results.length,
+        });
+        results = [...results, ...tier3];
+      }
+    }
+
+    // 4. Same Brand (different category)
+    if (results.length < 4 && brand) {
+      const tier4 = await this.productRepo.find({
+        where: {
+          brand: brand,
+          id: Not(In([id, ...results.map((p) => p.id)])),
+          is_active: true,
+        },
+        relations: ['category', 'images', 'variants'],
+        take: 4 - results.length,
+      });
+      results = [...results, ...tier4];
+    }
+
+    // 5. Final Fallback: Newest Products
+    if (results.length < 4) {
+      const fallback = await this.productRepo.find({
+        where: {
+          id: Not(In([id, ...results.map((p) => p.id)])),
+          is_active: true,
+        },
+        relations: ['category', 'images', 'variants'],
+        take: 4 - results.length,
+        order: { created_at: 'DESC' },
+      });
+      results = [...results, ...fallback];
+    }
+
+    return results;
   }
 }

@@ -42,6 +42,7 @@ import {
   addVariantSchema,
 } from './joi/product.validation';
 import { CreateVariantDto } from './dto/variant/create-variant.dto';
+import { GenerateMetadataDto } from './dto/product/generate-metadata.dto';
 
 @Controller('products')
 export class ProductController {
@@ -66,6 +67,13 @@ export class ProductController {
     @GetUser('id') userId: string,
   ) {
     return this.productService.create(dto, files, userId);
+  }
+
+  @Post('/generate-metadata')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  generateMetadata(@Body() dto: GenerateMetadataDto) {
+    return this.productService.generateMetadata(dto);
   }
 
   //admin product
@@ -186,5 +194,10 @@ export class ProductController {
   // @Roles(UserRole.USER, UserRole.ADMIN)
   getProductDetails(@Param('id') id: string) {
     return this.productService.getProductDetails(id);
+  }
+
+  @Get(':id/recommendations')
+  getRecommendations(@Param('id') id: string) {
+    return this.productService.getRecommendations(id);
   }
 }
