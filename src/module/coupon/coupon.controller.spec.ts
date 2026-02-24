@@ -3,9 +3,11 @@ import { CouponController } from './coupon.controller';
 import { CouponService } from './coupon.service';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
-import { beforeEach, describe } from 'node:test';
+import { ConfigService } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../user/entity/user.entity';
 
-void describe('CouponController', () => {
+describe('CouponController', () => {
   let controller: CouponController;
   let service: CouponService;
 
@@ -16,12 +18,28 @@ void describe('CouponController', () => {
   };
 
   beforeEach(async () => {
+    mockCouponService.createCoupon.mockClear();
+    mockCouponService.findAll.mockClear();
+    mockCouponService.validateCoupon.mockClear();
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CouponController],
       providers: [
         {
           provide: CouponService,
           useValue: mockCouponService,
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+          },
         },
       ],
     })
@@ -43,7 +61,7 @@ void describe('CouponController', () => {
     it('should call service.createCoupon', async () => {
       const dto = {
         code: 'SAVE10',
-        discount_type: 'PERCENTAGE',
+        discount_type: 'PERCENTAGE' as any,
         discount_value: 10,
       };
       mockCouponService.createCoupon.mockResolvedValue({ id: '1', ...dto });
@@ -68,7 +86,7 @@ void describe('CouponController', () => {
 
   describe('validate', () => {
     it('should call service.validateCoupon and return discount info', async () => {
-      const body = { code: 'SAVE10', cartTotal: 100 };
+      const body = { code: 'SAVE10', cartTotal: 100, product_ids: [] };
       mockCouponService.validateCoupon.mockResolvedValue({
         discountAmount: 10,
         coupon: { code: 'SAVE10' },
@@ -79,6 +97,7 @@ void describe('CouponController', () => {
       expect(service.validateCoupon).toHaveBeenCalledWith(
         body.code,
         body.cartTotal,
+        body.product_ids,
       );
       expect(result).toEqual({
         discountAmount: 10,

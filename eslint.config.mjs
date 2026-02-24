@@ -8,9 +8,17 @@ export default tseslint.config(
   {
     ignores: ['eslint.config.mjs'],
   },
+
+  // Base JS rules
   eslint.configs.recommended,
+
+  // TypeScript strict rules
   ...tseslint.configs.recommendedTypeChecked,
+
+  // Prettier
   eslintPluginPrettierRecommended,
+
+  // Global language options
   {
     languageOptions: {
       globals: {
@@ -24,6 +32,8 @@ export default tseslint.config(
       },
     },
   },
+
+  // Global rule tuning (prod code)
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
@@ -33,7 +43,21 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-call': 'warn',
       '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unsafe-return': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
+    },
+  },
+
+  //  TEST FILE OVERRIDES (THIS WAS MISSING)
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
     },
   },
 );

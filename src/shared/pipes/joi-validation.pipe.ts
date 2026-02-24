@@ -11,11 +11,12 @@ export class JoiValidationPipe implements PipeTransform {
   constructor(private schema: Joi.ObjectSchema) {}
 
   transform(value: any, metadata: ArgumentMetadata) {
-    if (metadata.type !== 'body') {
+    if (metadata.type !== 'body' || !value || typeof value !== 'object') {
       return value;
     }
 
-    this.normalize(value);
+    const body = value as Record<string, any>;
+    this.normalize(body);
 
     const { error, value: validated } = this.schema.validate(value, {
       abortEarly: false,
@@ -32,7 +33,7 @@ export class JoiValidationPipe implements PipeTransform {
     return validated;
   }
 
-  private normalize(body: any) {
+  private normalize(body: Record<string, any>) {
     // ---- JSON fields ----
     if (body.specifications && typeof body.specifications === 'string') {
       body.specifications = this.safeJson(
