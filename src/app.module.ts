@@ -32,6 +32,7 @@ import { EventsModule } from './events/events.module';
 import { DashboardModule } from './module/dashboard/dashboard.module';
 import { ReviewModule } from './module/review/review.module';
 import { CouponModule } from './module/coupon/coupon.module';
+import { AiModule } from './module/ai/ai.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { CouponModule } from './module/coupon/coupon.module';
     DashboardModule,
     ReviewModule,
     CouponModule,
+    AiModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],
