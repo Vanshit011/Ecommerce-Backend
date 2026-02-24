@@ -1,30 +1,24 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config'; // Added ConfigModule just in case
 
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { Token } from './entity/auth.entity';
 import { UsersModule } from '../user/user.module';
 import { MailModule } from '../mail/mail.module';
-import { PasswordResetOtp } from './entity/password-reset-otp.entity';
-import { TokenService } from './token.service';
+import { Otp } from './entity/otp.entity';
+import { TokenModule } from '../token/token.module';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { GithubStrategy } from './strategies/github.strategy';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Token, PasswordResetOtp]),
+    TypeOrmModule.forFeature([Otp]),
     UsersModule,
     MailModule,
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        expiresIn: config.get<string>('JWT_EXPIRES_IN') || '1d',
-      }),
-    }),
+    TokenModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokenService],
-  exports: [AuthService, TokenService, JwtModule],
+  providers: [AuthService, GoogleStrategy, GithubStrategy],
+  exports: [AuthService, TokenModule],
 })
 export class AuthModule {}

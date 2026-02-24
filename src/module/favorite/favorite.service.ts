@@ -55,7 +55,7 @@ export class FavoriteService {
       .getOne();
 
     if (!fav) {
-      return { message: 'Already removed from favorites' };
+      throw new NotFoundException('Favorite not found');
     }
 
     await this.favoriteRepo.softDelete(fav.id);

@@ -15,6 +15,12 @@ import { Address } from '../address/entity/address.entity';
 import { AdminOrderQueryParams } from '../../shared/constants/types';
 import { Payment } from '../payments/entity/payments.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
+import { Product } from '../product/entity/product.entity';
+import { ProductVariant } from '../product/entity/product-variant.entity';
+import { CouponService } from '../coupon/coupon.service';
+import { Coupon } from '../coupon/entity/coupon.entity';
+import { User } from '../user/entity/user.entity';
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -32,21 +38,25 @@ export class OrderService {
     private paymentRepo: Repository<Payment>,
 
     private stripeService: StripeService,
+    private couponService: CouponService,
+
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
 
   //USER SIDE
 
   // CREATE ORDER FROM CART
-  async createFromCart(userId: string) {
+  async createFromCart(userId: string, couponCode?: string) {
     const cart = await this.cartService.getMyCart(userId);
 
     if (!cart.items.length) {
-      throw new NotFoundException('Cart is empty');
+      throw new BadRequestException('Cart is empty');
     }
 
     const address = await this.addressRepo.findOne({
       where: {
-        user_id: userId,
+        user: { id: userId },
         is_default: true,
       },
     });
@@ -61,10 +71,34 @@ export class OrderService {
       total += Number(item.price_snapshot) * item.quantity;
     }
 
+    let discountAmount = 0;
+    let coupon: Coupon | undefined = undefined;
+
+    // Use provided code or fallback to active coupon from cart items
+    let effectiveCouponCode = couponCode;
+    if (!effectiveCouponCode) {
+      effectiveCouponCode = cart.items[0]?.active_cart_coupon || undefined;
+    }
+
+    if (effectiveCouponCode) {
+      const productIds = cart.items.map((i) => i.product.id);
+      const validation = await this.couponService.validateCoupon(
+        effectiveCouponCode,
+        total,
+        productIds,
+      );
+      discountAmount = validation.discountAmount;
+      coupon = validation.coupon;
+    }
+
+    const finalAmount = Math.max(0, total - discountAmount);
+
     const order = await this.orderRepo.save({
-      user_id: userId,
-      address_id: address.id,
-      total_amount: total,
+      user: { id: userId },
+      address: { id: address.id },
+      total_amount: finalAmount,
+      discount_amount: discountAmount,
+      coupon: coupon,
       status: Status.PENDING,
     });
 
@@ -72,6 +106,7 @@ export class OrderService {
       this.orderItemRepo.create({
         order,
         product: item.product,
+        variant: item.variant,
         price: item.price_snapshot,
         quantity: item.quantity,
 
@@ -83,7 +118,7 @@ export class OrderService {
         //  product snapshot
         product_snapshot: {
           name: item.product.name,
-          sku: item.product.sku,
+          sku: item.variant?.sku || '',
           image: item.product.images?.[0]?.url,
         },
       }),
@@ -91,8 +126,8 @@ export class OrderService {
 
     await this.orderItemRepo.save(orderItems);
 
-    //  clear cart after order
-    await this.cartService.clearCart(userId);
+    //  clear cart after payment success, not here.
+    // await this.cartService.clearCart(userId);
 
     return order;
   }
@@ -120,9 +155,12 @@ export class OrderService {
       const order = await orderRepo.findOne({
         where: { id: orderId },
         relations: {
+          user: true,
           items: {
             product: true,
+            variant: true,
           },
+          coupon: true,
         },
       });
 
@@ -145,15 +183,27 @@ export class OrderService {
       order.status = Status.CONFIRMED;
       await orderRepo.save(order);
 
+      // Increment coupon usage if applied
+      if (order.coupon) {
+        await this.couponService.incrementUsage(order.coupon.id, manager);
+      }
+
+      //  clear cart after payment success
+      if (order.user?.id) {
+        await this.cartService.clearCart(order.user.id);
+      }
+
       //  reduce stock
       for (const item of order.items) {
-        if (item.product.stock_qty < item.quantity) {
-          throw new Error(`Stock mismatch for product ${item.product.id}`);
+        if (item.variant) {
+          await manager
+            .getRepository(ProductVariant)
+            .decrement({ id: item.variant.id }, 'stock_qty', item.quantity);
+        } else {
+          await manager
+            .getRepository(Product)
+            .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
         }
-
-        await manager
-          .getRepository(item.product.constructor.name)
-          .decrement({ id: item.product.id }, 'stock_qty', item.quantity);
       }
     });
   }
@@ -161,13 +211,14 @@ export class OrderService {
   // USER ORDERS
   async getUserOrders(userId: string) {
     return this.orderRepo.find({
-      where: { user_id: userId },
+      where: { user: { id: userId } },
       relations: [
         'items',
         'items.product',
         'items.product.images',
         'items.product.category',
         'address',
+        'coupon',
       ],
       order: {
         created_at: 'DESC',
@@ -189,11 +240,31 @@ export class OrderService {
         'items.product',
         'items.product.images',
         'items.product.category',
+        'coupon',
       ],
     });
 
     if (!order) {
       throw new NotFoundException('Order not found');
+    }
+
+    // POLLING FALLBACK: If Pending but looks paid, check Stripe
+    if (order.status === Status.PENDING && order.stripe_payment_intent_id) {
+      try {
+        const stripe = this.stripeService.getClient();
+        const intent = await stripe.paymentIntents.retrieve(
+          order.stripe_payment_intent_id,
+        );
+
+        if (intent.status === 'succeeded') {
+          await this.handlePaymentSuccess(order.id, intent.id);
+
+          // Return updated status
+          order.status = Status.CONFIRMED;
+        }
+      } catch (err) {
+        console.error('Error polling Stripe status:', err);
+      }
     }
 
     return order;
@@ -202,7 +273,7 @@ export class OrderService {
   // USER CANCEL HIS ORDER
   async cancelOrderByUser(orderId: string, userId: string) {
     const order = await this.orderRepo.findOne({
-      where: { id: orderId, user_id: userId },
+      where: { id: orderId, user: { id: userId } },
     });
 
     if (!order) {
@@ -222,7 +293,12 @@ export class OrderService {
     // unpaid order → just cancel
     if (order.status === Status.PENDING) {
       order.status = Status.CANCELLED;
-      return this.orderRepo.save(order);
+      try {
+        return await this.orderRepo.save(order);
+      } catch (err) {
+        console.error('DEBUG: cancelOrderByUser save error:', err);
+        throw err;
+      }
     }
 
     // failed payment → just cancel
@@ -235,7 +311,7 @@ export class OrderService {
     if (order.status === Status.CONFIRMED) {
       const payment = await this.paymentRepo.findOne({
         where: {
-          order_id: order.id,
+          order: { id: order.id },
           status: 'succeeded',
         },
         order: { created_at: 'DESC' },

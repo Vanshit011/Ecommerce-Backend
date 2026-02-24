@@ -7,10 +7,16 @@ import {
   Put,
   Post,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { Category } from './entity/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { JoiValidationPipe } from '../../shared/pipes/joi-validation.pipe';
+import {
+  createCategorySchema,
+  updateCategorySchema,
+} from './joi/category.validation';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
 import { Roles } from '../../core/decorator/roles.decorator';
@@ -23,12 +29,13 @@ export class CategoriesController {
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UsePipes(new JoiValidationPipe(createCategorySchema))
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
   }
 
   @Get()
-  @UseGuards(AuthGuard, RolesGuard)
+  // @UseGuards(AuthGuard, RolesGuard)
   async findAll(): Promise<Category[]> {
     const tree = await this.categoriesService.findAll();
     return tree;
@@ -37,6 +44,7 @@ export class CategoriesController {
   @Put(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UsePipes(new JoiValidationPipe(updateCategorySchema))
   update(@Param('id') id: string, @Body() dto: Partial<Category>) {
     return this.categoriesService.update(id, dto);
   }

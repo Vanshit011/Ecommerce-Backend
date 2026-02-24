@@ -1,6 +1,6 @@
-import { Column, OneToMany, Entity } from 'typeorm';
-import { Token } from '../../../module/auth/entity/auth.entity';
-import { PasswordResetOtp } from '../../../module/auth/entity/password-reset-otp.entity';
+import { Column, OneToMany, Entity, Index } from 'typeorm';
+import { Token } from '../../../module/token/entity/token.entity';
+import { Otp } from '../../auth/entity/otp.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { UserRole } from '../../../shared/constants/enum';
 import { Product } from '../../../module/product/entity/product.entity';
@@ -9,18 +9,32 @@ import { CartItem } from '../../../module/cart/entity/cart.entity';
 import { Address } from '../../address/entity/address.entity';
 import { Order } from '../../order/entity/order.entity';
 import { Payment } from '../../payments/entity/payments.entity';
+import { Review } from '../../review/entity/review.entity';
+import { Coupon } from '../../../module/coupon/entity/coupon.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
-  @Column({ unique: true })
+  @Index()
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
+  name: string;
+
+  @Index()
+  @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255, nullable: true })
   password: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
   mobile: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+  google_id: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+  github_id: string;
+
+  @Index()
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -31,11 +45,8 @@ export class User extends BaseEntity {
   @OneToMany(() => Token, (token) => token.user)
   tokens: Token[];
 
-  @OneToMany(
-    () => PasswordResetOtp,
-    (passwordResetOtp) => passwordResetOtp.user,
-  )
-  password_reset_otps: PasswordResetOtp[];
+  @OneToMany(() => Otp, (otp) => otp.user)
+  otps: Otp[];
 
   @OneToMany(() => Product, (product) => product.user)
   products: Product[];
@@ -54,5 +65,11 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Payment, (payment) => payment.user)
   payments: Payment[];
+
+  @OneToMany(() => Review, (review) => review.user)
+  reviews: Review[];
+
+  @OneToMany(() => Coupon, (coupon) => coupon.user)
+  coupons: Coupon[];
 }
 export { UserRole };

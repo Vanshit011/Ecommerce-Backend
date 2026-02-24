@@ -1,38 +1,35 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 import { Order } from '../../order/entity/order.entity';
 import { User } from '../../user/entity/user.entity';
 
 @Entity({ name: 'payments' })
 export class Payment extends BaseEntity {
+  @Index()
   @ManyToOne(() => User, (user) => user.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id', type: 'uuid' })
-  user_id: string;
-
+  @Index()
   @ManyToOne(() => Order, (order) => order.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
   order: Order;
-  @Column({ name: 'order_id', type: 'uuid' })
-  order_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255, nullable: true })
   stripe_payment_intent_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 50, nullable: true })
   status: string;
 
-  @Column('decimal')
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 10, nullable: true })
   currency: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   method: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   refund_id: string;
 }

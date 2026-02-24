@@ -8,12 +8,10 @@ import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
-import { PasswordResetOtp } from './entity/password-reset-otp.entity';
+import { Otp } from './entity/otp.entity';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-// import { UserRole } from 'src/shared/constants/enum';
-import { TokenService } from './token.service';
-import { OtpType } from 'src/shared/constants/enum';
-import { Token } from './entity/auth.entity';
+import { TokenService } from '../token/token.service';
+import { OtpType, UserRole } from '../../shared/constants/enum';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyForgotOtpDto } from './dto/VerifyForgotOtpDto.dto';
 
@@ -26,15 +24,24 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly tokenService: TokenService,
 
-    @InjectRepository(PasswordResetOtp)
-    private readonly otpRepo: Repository<PasswordResetOtp>,
-    @InjectRepository(Token)
-    private readonly tokenRepo: Repository<Token>,
+    @InjectRepository(Otp)
+    private readonly otpRepo: Repository<Otp>,
   ) {}
 
-  async register(email: string, password: string, mobile: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    mobile: string,
+    role: UserRole = UserRole.USER,
+  ) {
+    const existingName = await this.usersService.findByName(name);
     const existingUser = await this.usersService.findByEmail(email);
     const existingMobileUser = await this.usersService.findByMobile(mobile);
+
+    if (existingName) {
+      throw new BadRequestException('Name already exists');
+    }
 
     if (existingMobileUser) {
       throw new BadRequestException('Mobile number already exists');
@@ -51,13 +58,15 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.usersService.create({
+      name,
       email,
       mobile,
       password: hashedPassword,
+      role,
     });
 
     this.mailService
-      .sendWelcomeEmail(user.email, user.email)
+      .sendWelcomeEmail(user.email, user.name || user.email)
       .catch(console.error);
 
     return { success: true };
@@ -129,14 +138,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    const token = await this.tokenRepo.findOne({
-      where: { user: { id: userId } },
-    });
-
-    if (!token) return;
-
-    token.logout_at = new Date();
-    await this.tokenRepo.save(token);
+    await this.tokenService.revokeToken(userId);
   }
 
   async sendForgotPasswordOtp(dto: ForgotPasswordDto): Promise<void> {
@@ -251,5 +253,53 @@ export class AuthService {
 
     user.password = await bcrypt.hash(newPassword, 10);
     await this.usersService.save(user);
+  }
+
+  async validateSocialUser(profile: {
+    email: string;
+    name: string;
+    google_id?: string;
+    github_id?: string;
+  }) {
+    const { email, name, google_id, github_id } = profile;
+
+    let user = await this.usersService.findByEmail(email);
+
+    if (user) {
+      // Update social IDs if not present
+      let updated = false;
+      if (google_id && !user.google_id) {
+        user.google_id = google_id;
+        updated = true;
+      }
+      if (github_id && !user.github_id) {
+        user.github_id = github_id;
+        updated = true;
+      }
+      if (updated) {
+        await this.usersService.save(user);
+      }
+    } else {
+      // Create new user
+      user = await this.usersService.create({
+        email,
+        name,
+        google_id,
+        github_id,
+        role: UserRole.USER,
+      });
+    }
+
+    const tokens = await this.tokenService.generate(user.id, user.role);
+
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      ...tokens,
+    };
   }
 }

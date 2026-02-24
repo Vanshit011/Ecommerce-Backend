@@ -3,23 +3,19 @@ import { Product } from './product.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('product_images')
-@Index('idx_product_images_product', ['product_id'])
-@Index('idx_product_images_main', ['product_id', 'is_main'])
+@Index(['product', 'is_main'])
 export class ProductImage extends BaseEntity {
-  @ManyToOne(() => Product, (p) => p.images, {
-    onDelete: 'CASCADE',
-  })
+  @Index()
+  @ManyToOne(() => Product, (p) => p.images, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;
-  @Column()
-  product_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   url: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', length: 255 })
   image_public_id: string;
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   is_main: boolean;
 }

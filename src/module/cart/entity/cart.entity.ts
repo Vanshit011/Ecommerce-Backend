@@ -1,38 +1,41 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
+import { ProductVariant } from '../../product/entity/product-variant.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('cart_items')
+@Index(['user', 'product', 'variant_id'])
 export class CartItem extends BaseEntity {
-  @ManyToOne(() => User, (user) => user.cart_items, {
-    onDelete: 'CASCADE',
-  })
+  @Index()
+  @ManyToOne(() => User, (user) => user.cart_items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
-  @Column({ name: 'user_id', type: 'uuid' })
-  user_id: string;
 
-  @ManyToOne(() => Product, {
-    onDelete: 'CASCADE',
-  })
+  @Index()
+  @ManyToOne(() => Product, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;
-  @Column({ name: 'product_id', type: 'uuid' })
-  product_id: string;
 
-  @Column({ default: 1 })
+  @ManyToOne(() => ProductVariant, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'variant_id' })
+  variant: ProductVariant;
+
+  @Column({ type: 'int', default: 1 })
   quantity: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   size: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   color: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'variant_id', nullable: true })
   variant_id: string;
 
-  @Column({ type: 'numeric' })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   price_snapshot: number;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  active_cart_coupon: string | null;
 }
