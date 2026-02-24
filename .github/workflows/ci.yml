@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -45,17 +45,14 @@ jobs:
       - name: Run Tests
         run: npm run test
         env:
-          # Database (Internal to CI - safe to keep)
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USERNAME: postgres
           DB_PASSWORD: password
           DB_NAME: ecommerce_test
 
-          # Security & Auth
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
-          # Third Party Services (Sensitive)
           MAIL_USER: ${{ secrets.MAIL_USER }}
           MAIL_PASS: ${{ secrets.MAIL_PASS }}
           MAIL_HOST: smtp.gmail.com
@@ -81,6 +78,8 @@ jobs:
   docker-verify:
     name: Docker Build Verification
     runs-on: ubuntu-latest
+    needs: lint-and-test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -88,9 +87,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Build Docker Image (no push)
         uses: docker/build-push-action@v5
         with:
           context: .
           push: false
-          tags: ecommerce-backend:latest
+          tags: ecommerce-backend:ci-test
+
+  docker-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: vanshitt/ecommerce-backend:latest
