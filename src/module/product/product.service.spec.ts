@@ -5,6 +5,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
 import { Category } from '../categories/entity/category.entity';
 import { ProductImage } from './entity/product_images.entity';
+import { ProductVariant } from './entity/product-variant.entity';
+import { GeminiService } from '../ai/gemini.service';
 // import { Repository } from 'typeorm';
 
 describe('ProductService', () => {
@@ -39,6 +41,27 @@ describe('ProductService', () => {
             create: jest.fn(),
             save: jest.fn(),
             delete: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(ProductVariant),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            findOne: jest.fn(),
+            find: jest.fn(),
+            softDelete: jest.fn(),
+            count: jest.fn(),
+            manager: {
+              transaction: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: GeminiService,
+          useValue: {
+            isConfigured: jest.fn(),
+            generateJsonResponse: jest.fn(),
           },
         },
       ],

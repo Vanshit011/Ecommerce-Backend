@@ -11,8 +11,8 @@ import {
 
 describe('ReviewService', () => {
   let service: ReviewService;
-  let reviewRepo: any;
-  let productRepo: any;
+  let reviewRepo: Record<string, any>;
+  let productRepo: Record<string, any>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,6 +25,7 @@ describe('ReviewService', () => {
             save: jest.fn(),
             findOne: jest.fn(),
             find: jest.fn(),
+            softRemove: jest.fn(),
           },
         },
         {

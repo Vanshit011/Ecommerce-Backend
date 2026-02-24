@@ -9,6 +9,10 @@ import { CartService } from '../cart/cart.service';
 import { Payment } from '../payments/entity/payments.entity';
 import { StripeService } from '../../core/stripe/stripe.service';
 import { Repository } from 'typeorm';
+import { CouponService } from '../coupon/coupon.service';
+import { User } from '../user/entity/user.entity';
+import { ProductVariant } from '../product/entity/product-variant.entity';
+import { Product } from '../product/entity/product.entity';
 
 describe('OrderService', () => {
   let service: OrderService;
@@ -76,6 +80,32 @@ describe('OrderService', () => {
           provide: StripeService,
           useValue: {
             getClient: jest.fn(),
+          },
+        },
+        {
+          provide: CouponService,
+          useValue: {
+            validateCoupon: jest.fn(),
+            incrementUsage: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(ProductVariant),
+          useValue: {
+            decrement: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Product),
+          useValue: {
+            decrement: jest.fn(),
           },
         },
       ],

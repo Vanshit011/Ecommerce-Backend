@@ -34,4 +34,5 @@ export const updateCouponSchema = Joi.object({
 export const validateCouponSchema = Joi.object({
   code: Joi.string().trim().uppercase().required(),
   cartTotal: Joi.number().positive().required(),
+  product_ids: Joi.array().items(Joi.string().uuid()).optional(),
 }).options({ convert: true });

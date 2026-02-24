@@ -21,9 +21,7 @@ export const validationSchema = Joi.object({
   STRIPE_SECRET_KEY: Joi.string().required(),
   ECOMMERCE_FRONTEND_LOCALHOST: Joi.string().required(),
   // Gemini
-  GEMINI_API_KEY: Joi.string()
-    .optional()
-    .default('AIzaSyBDXzcWbdKXO8o3OBcKrI2O8iQBP4_DSQ8'),
+  GEMINI_API_KEY: Joi.string().optional().default(),
 
   // Cloudinary
   CLOUDINARY_NAME: Joi.string().required(),

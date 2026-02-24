@@ -8,19 +8,27 @@ describe('ReviewController', () => {
   let controller: ReviewController;
   let service: ReviewService;
 
+  const mockReviewService = {
+    createReview: jest.fn(),
+    getReviewsByProduct: jest.fn(),
+    getAverageRating: jest.fn(),
+    updateReview: jest.fn(),
+    deleteReview: jest.fn(),
+  };
+
   beforeEach(async () => {
+    mockReviewService.createReview.mockClear();
+    mockReviewService.getReviewsByProduct.mockClear();
+    mockReviewService.getAverageRating.mockClear();
+    mockReviewService.updateReview.mockClear();
+    mockReviewService.deleteReview.mockClear();
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ReviewController],
       providers: [
         {
           provide: ReviewService,
-          useValue: {
-            createReview: jest.fn(),
-            getReviewsByProduct: jest.fn(),
-            getAverageRating: jest.fn(),
-            updateReview: jest.fn(),
-            deleteReview: jest.fn(),
-          },
+          useValue: mockReviewService,
         },
       ],
     })

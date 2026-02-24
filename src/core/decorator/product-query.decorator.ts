@@ -3,13 +3,13 @@ import { ProductQueryParams } from '../../shared/constants/types';
 
 export const ProductQuery = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): ProductQueryParams => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx.switchToHttp().getRequest<any>();
 
-    const q = request.query;
+    const q = request.query || {};
 
-    const page = Math.max(parseInt(q.page as string) || 1, 1);
+    const page = Math.max(parseInt(String(q.page)) || 1, 1);
 
-    const limitRaw = parseInt(q.limit as string) || 10;
+    const limitRaw = parseInt(String(q.limit)) || 10;
     const limit = Math.min(Math.max(limitRaw, 1), 50);
 
     const skip = (page - 1) * limit;

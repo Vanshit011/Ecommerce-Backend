@@ -71,10 +71,13 @@ export class CouponController {
   @Post('validate')
   @UseGuards(AuthGuard)
   @UsePipes(new JoiValidationPipe(validateCouponSchema))
-  async validate(@Body() body: { code: string; cartTotal: number }) {
+  async validate(
+    @Body() body: { code: string; cartTotal: number; product_ids?: string[] },
+  ) {
     const result = await this.couponService.validateCoupon(
       body.code,
       body.cartTotal,
+      body.product_ids,
     );
     return {
       discountAmount: result.discountAmount,

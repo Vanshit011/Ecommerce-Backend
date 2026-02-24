@@ -4,6 +4,9 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../core/guard/auth.guard';
 import { RolesGuard } from '../../core/guard/roles.guard';
+import { ConfigService } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../user/entity/user.entity';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -22,6 +25,18 @@ describe('AuthController', () => {
             verifyForgotPasswordOtp: jest.fn(),
             resetPassword: jest.fn(),
             logout: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
           },
         },
       ],

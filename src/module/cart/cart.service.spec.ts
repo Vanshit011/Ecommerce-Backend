@@ -4,6 +4,8 @@ import { CartService } from './cart.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CartItem } from './entity/cart.entity';
 import { Product } from '../product/entity/product.entity';
+import { ProductVariant } from '../product/entity/product-variant.entity';
+import { CouponService } from '../coupon/coupon.service';
 // import { Repository } from 'typeorm';
 
 describe('CartService', () => {
@@ -30,6 +32,19 @@ describe('CartService', () => {
           provide: getRepositoryToken(Product),
           useValue: {
             findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(ProductVariant),
+          useValue: {
+            findOne: jest.fn(),
+            count: jest.fn(),
+          },
+        },
+        {
+          provide: CouponService,
+          useValue: {
+            validateCoupon: jest.fn(),
           },
         },
       ],
