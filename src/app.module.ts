@@ -37,11 +37,15 @@ import { AiModule } from './module/ai/ai.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      store: redisStore,
-      host: 'localhost',
-      port: 6379,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        store: redisStore,
+        host: configService.get<string>('REDIS_HOST'),
+        port: configService.get<number>('REDIS_PORT'),
+      }),
     }),
     ConfigModule.forRoot({
       isGlobal: true,

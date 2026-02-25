@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -8,6 +9,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
   });
+
+  const configService = app.get(ConfigService);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -22,17 +25,17 @@ async function bootstrap() {
 
   app.use(helmet());
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'http://192.168.5.42:5173',
-        'http://localhost:3000',
-        'http://192.168.5.113:5173',
-        'http://frontend:5173', // Docker frontend container
-      ];
+  const allowedOrigins = configService
+    .get<string>('ALLOWED_ORIGINS')
+    ?.split(',')
+    .map((origin) => origin.trim());
 
-      if (!origin || allowedOrigins.includes(origin)) {
+  app.enableCors({
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin || allowedOrigins?.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('CORS blocked'));
@@ -57,4 +60,6 @@ async function bootstrap() {
   // console.log(`🚀 API running on http://localhost:${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error(err);
+});

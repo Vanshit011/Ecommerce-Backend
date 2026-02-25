@@ -20,6 +20,12 @@ export const validationSchema = Joi.object({
   // Stripe
   STRIPE_SECRET_KEY: Joi.string().required(),
   ECOMMERCE_FRONTEND_LOCALHOST: Joi.string().required(),
+
+  // CORS
+  ALLOWED_ORIGINS: Joi.string().default(
+    'http://localhost:5173,http://localhost:3000',
+  ),
+
   // Gemini
   GEMINI_API_KEY: Joi.string().optional().default(),
 
@@ -27,6 +33,10 @@ export const validationSchema = Joi.object({
   CLOUDINARY_NAME: Joi.string().required(),
   CLOUDINARY_API_KEY: Joi.string().required(),
   CLOUDINARY_API_SECRET: Joi.string().required(),
+
+  // Redis
+  REDIS_HOST: Joi.string().default('localhost'),
+  REDIS_PORT: Joi.number().default(6379),
 
   // JWT
   JWT_SECRET: Joi.string().required(),
