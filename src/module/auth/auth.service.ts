@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { UsersService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,6 +28,9 @@ export class AuthService {
 
     @InjectRepository(Otp)
     private readonly otpRepo: Repository<Otp>,
+
+    @Inject('MAIL_SERVICE')
+    private readonly mailClient: ClientProxy,
   ) {}
 
   async register(
@@ -65,9 +70,10 @@ export class AuthService {
       role,
     });
 
-    this.mailService
-      .sendWelcomeEmail(user.email, user.name || user.email)
-      .catch(console.error);
+    this.mailClient.emit('send_welcome_email', {
+      email: user.email,
+      name: user.name || user.email,
+    });
 
     return { success: true };
   }
@@ -195,7 +201,7 @@ export class AuthService {
 
     //  SEND OTP
     if (email) {
-      this.mailService.sendOtpEmail(user.email, otp).catch(console.error);
+      this.mailClient.emit('send_otp_email', { email: user.email, otp });
     } else {
       console.log(`STATIC OTP ${otp} sent to mobile ${user.mobile}`);
     }
