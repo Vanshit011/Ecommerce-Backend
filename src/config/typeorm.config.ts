@@ -15,7 +15,7 @@ export const typeOrmConfig = (): TypeOrmModuleOptions => ({
   database: process.env.DB_NAME,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-  synchronize: process.env.NODE_ENV === 'test', // auto-create tables in test env
+  synchronize: false, // auto-create tables in test env
   extra: {
     max: 20, // restricted to 20 connections
   },

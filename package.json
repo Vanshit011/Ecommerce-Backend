@@ -25,10 +25,12 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/config/typeorm.config.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/typeorm.config.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/typeorm.config.ts"
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/typeorm.config.ts",
+    "mcp:start": "ts-node src/mcp-server.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@nestjs/cache-manager": "^3.1.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -80,6 +82,7 @@
     "@types/mocha": "^10.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
+    "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
     "cross-env": "^10.1.0",
     "dotenv-cli": "^11.0.0",

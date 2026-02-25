@@ -27,7 +27,7 @@ export const validationSchema = Joi.object({
   ),
 
   // Gemini
-  GEMINI_API_KEY: Joi.string().optional().default(),
+  GEMINI_API_KEY: Joi.string().optional(),
 
   // Cloudinary
   CLOUDINARY_NAME: Joi.string().required(),
