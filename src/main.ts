@@ -57,7 +57,9 @@ async function bootstrap() {
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port);
 
-  // console.log(`🚀 API running on http://localhost:${port}`);
+  console.log(
+    `🚀 Application is running in: ${process.env.NODE_ENV || 'development'} mode`,
+  );
 }
 
 bootstrap().catch((err) => {
