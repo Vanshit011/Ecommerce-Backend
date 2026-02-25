@@ -26,6 +26,7 @@ import { SeederModule } from './seeder/seeder.module';
 import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './core/redis/redis.module';
+import { RmqModule } from './core/rmq/rmq.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
@@ -80,6 +81,7 @@ import { AiModule } from './module/ai/ai.module';
     ReviewModule,
     CouponModule,
     AiModule,
+    RmqModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],
