@@ -6,14 +6,14 @@ import { ProductVariant } from '../../product/entity/product-variant.entity';
 
 @Entity('order_items')
 export class OrderItem extends BaseEntity {
-  @Index()
+  @Index('idx_order_items_order_id')
   @ManyToOne(() => Order, (order) => order.items, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @Index()
+  @Index('idx_order_items_product_id')
   @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;

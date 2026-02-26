@@ -36,7 +36,7 @@ export class Address extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   is_default: boolean;
 
-  @Index()
+  @Index('idx_addresses_user_id')
   @ManyToOne(() => User, (user) => user.address, {
     onDelete: 'CASCADE',
   })

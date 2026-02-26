@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not, ILike } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Product } from '../product/entity/product.entity';
 import { CreateProductDto } from './dto/product/create-product.dto';
 import { Category } from '../categories/entity/category.entity';
@@ -528,75 +528,124 @@ export class ProductService {
 
   // USER see all products
   async findAllForUsers(query: ProductQueryParams) {
-    let { page, limit, skip } = query;
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
     const { search, categories, sort, minPrice, maxPrice } = query;
 
-    page = page || 1;
-    limit = limit || 10;
+    const needsVariantJoin =
+      minPrice !== undefined ||
+      maxPrice !== undefined ||
+      sort === 'price_asc' ||
+      sort === 'price_desc';
 
-    skip = (page - 1) * limit;
+    // ─── PHASE 1: Get all matching IDs (lightweight) ──────────────────
+    const idQb = this.productRepo
+      .createQueryBuilder('products')
+      .where('products.is_active = :active', { active: true });
 
-    const qb = this.productRepo
+    // FIX: always include ORDER BY columns inside SELECT to satisfy PostgreSQL DISTINCT rule
+    if (needsVariantJoin) {
+      // Price sort/filter path — join variants, group by product id
+      idQb.leftJoin('products.variants', 'variants');
+      idQb.select([
+        'products.id          AS id',
+        'MIN(variants.price)  AS min_price',
+        'products.created_at  AS created_at',
+      ]);
+      idQb.groupBy('products.id');
+    } else {
+      // Default path — no variants join needed
+      idQb.select([
+        'products.id          AS id',
+        'products.created_at  AS created_at',
+      ]);
+    }
+
+    // Full-text search using GIN index (replaces slow LIKE)
+    if (search) {
+      idQb.andWhere(
+        `products.search_vector @@ plainto_tsquery('english', :search)`,
+        { search },
+      );
+    }
+
+    // Category filter — join only when needed
+    if (categories?.length) {
+      idQb
+        .leftJoin('products.category', 'category')
+        .andWhere('category.id IN (:...categories)', { categories });
+    }
+
+    // Price filter (variants already joined above via needsVariantJoin)
+    if (minPrice !== undefined) {
+      idQb.andWhere('variants.price >= :minPrice', { minPrice });
+    }
+    if (maxPrice !== undefined) {
+      idQb.andWhere('variants.price <= :maxPrice', { maxPrice });
+    }
+
+    // Sorting — ORDER BY column must exist in SELECT (PostgreSQL rule)
+    switch (sort) {
+      case 'price_asc':
+        idQb.orderBy('min_price', 'ASC');
+        break;
+      case 'price_desc':
+        idQb.orderBy('min_price', 'DESC');
+        break;
+      case 'newest':
+      default:
+        idQb.orderBy('products.created_at', 'DESC');
+        break;
+    }
+
+    // Fetch ALL matching IDs first (for accurate total count)
+    // then slice in memory for pagination — avoids a second COUNT query
+    const allIds = await idQb.getRawMany();
+    const total = allIds.length;
+
+    const pageIds = allIds.slice(skip, skip + limit);
+    const ids: string[] = pageIds.map((r) => r.id);
+
+    // Early return — no results found
+    if (!ids.length) {
+      return {
+        data: [],
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: false,
+          hasPrevPage: page > 1,
+        },
+      };
+    }
+
+    // ─── PHASE 2: Hydrate only the paginated IDs with full relations ───
+    // JOINs here only run on `limit` rows (e.g. 10) — never the full table
+    const hydrateQb = this.productRepo
       .createQueryBuilder('products')
       .leftJoinAndSelect('products.category', 'category')
       .leftJoinAndSelect('products.images', 'images')
       .leftJoinAndSelect('products.variants', 'variants')
-      .where('products.is_active = :active', { active: true });
+      .where('products.id IN (:...ids)', { ids });
 
-    //  SEARCH
-    if (search) {
-      qb.andWhere(
-        `(
-        LOWER(products.name) LIKE :search
-        OR LOWER(products.description) LIKE :search
-        OR LOWER(category.name) LIKE :search
-      )`,
-        {
-          search: `%${search.toLowerCase()}%`,
-        },
-      );
-    }
-
-    //  CATEGORY FILTER
-    if (categories?.length) {
-      qb.andWhere('category.id IN (:...categories)', {
-        categories,
-      });
-    }
-
-    // price range
-    if (minPrice !== undefined) {
-      qb.andWhere('variants.price >= :minPrice', { minPrice });
-    }
-
-    if (maxPrice !== undefined) {
-      qb.andWhere('variants.price <= :maxPrice', { maxPrice });
-    }
-
-    //  SORTING
+    // Re-apply sort on final result
     switch (sort) {
       case 'price_asc':
-        qb.orderBy('variants.price', 'ASC');
+        hydrateQb.orderBy('variants.price', 'ASC');
         break;
       case 'price_desc':
-        qb.orderBy('variants.price', 'DESC');
+        hydrateQb.orderBy('variants.price', 'DESC');
         break;
-
       case 'newest':
-        qb.orderBy('products.created_at', 'DESC');
-        break;
-
       default:
-        qb.orderBy('products.created_at', 'DESC');
+        hydrateQb.orderBy('products.created_at', 'DESC');
+        break;
     }
 
-    //  prevent duplicates from images join
-    qb.distinct(true);
-
-    // pagination
-    qb.skip(skip).take(limit);
-
-    const [products, total] = await qb.getManyAndCount();
+    const products = await hydrateQb.getMany();
 
     const lastPage = Math.ceil(total / limit);
 
@@ -615,10 +664,16 @@ export class ProductService {
 
   //product details for users
   async getProductDetails(id: string) {
-    const product = await this.productRepo.findOne({
-      where: { id, is_active: true },
-      relations: ['category', 'images', 'variants'],
-    });
+    // Use QueryBuilder for better control + select only needed fields
+    const product = await this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.variants', 'variants')
+      .where('product.id = :id', { id })
+      .andWhere('product.is_active = :isActive', { isActive: true })
+      .cache(`product_${id}`, 30000)
+      .getOne();
 
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -666,23 +721,36 @@ export class ProductService {
 
   // recommendation logic for users (Rule-based: Improved relevance)
   async getRecommendations(id: string) {
-    const product = await this.productRepo.findOne({
-      where: { id, is_active: true },
-      relations: ['category'],
-    });
+    // Cache the entire recommendation result — same product = same result
+    const cacheKey = `recommendations_${id}`;
+
+    // 1. Fetch base product (cached)
+    const product = await this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .where('product.id = :id', { id })
+      .andWhere('product.is_active = true')
+      .cache(`product_${id}`, 60000)
+      .getOne();
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
-    //  Try AI First
+    // 2. Try AI path
     if (this.geminiService.isConfigured()) {
       try {
-        const candidates = await this.productRepo.find({
-          where: { is_active: true, id: Not(id) },
-          relations: ['category'],
-          take: 20,
-        });
+        // Fetch candidates WITHOUT heavy relations — only need id/name/category for AI prompt
+        const candidates = await this.productRepo
+          .createQueryBuilder('product')
+          .select(['product.id', 'product.name'])
+          .leftJoin('product.category', 'category')
+          .addSelect('category.name')
+          .where('product.is_active = true')
+          .andWhere('product.id != :id', { id })
+          .cache(`candidates_${product.category?.id}`, 60000) // cache by category
+          .limit(20)
+          .getMany();
 
         const candidateInfo = candidates.map((p) => ({
           id: p.id,
@@ -691,104 +759,73 @@ export class ProductService {
         }));
 
         const prompt = `
-          Target Product: ${product.name} (Category: ${product.category?.name})
-          Candidates: ${JSON.stringify(candidateInfo)}
-
-          Select the top 4 most relevant or complementary product IDs from the candidates.
-          Return ONLY a JSON array of strings.
-        `;
+        Target Product: ${product.name} (Category: ${product.category?.name})
+        Candidates: ${JSON.stringify(candidateInfo)}
+        Select the top 4 most relevant or complementary product IDs from the candidates.
+        Return ONLY a JSON array of strings.
+      `;
 
         const recommendedIds =
           await this.geminiService.generateJsonResponse<string[]>(prompt);
 
         if (Array.isArray(recommendedIds) && recommendedIds.length > 0) {
-          return await this.productRepo.find({
-            where: { id: In(recommendedIds), is_active: true },
-            relations: ['category', 'images', 'variants'],
-          });
+          return await this.productRepo
+            .createQueryBuilder('product')
+            .leftJoinAndSelect('product.category', 'category')
+            .leftJoinAndSelect('product.images', 'images')
+            .leftJoinAndSelect('product.variants', 'variants')
+            .where('product.id IN (:...ids)', { ids: recommendedIds })
+            .andWhere('product.is_active = true')
+            .cache(cacheKey, 60000)
+            .getMany();
         }
       } catch (error) {
         console.warn('AI Recommendation failed, falling back to rules:', error);
       }
     }
 
-    //  FALLBACK: Rule-based Logic (Existing logic below)
+    // 3. FALLBACK: Single optimized query instead of 5+ queries
+    // Collect all candidates in ONE query using CASE for priority scoring
     const categoryId = product.category?.id;
     const brand = product.brand;
-    const nameKeywords = product.name.split(' ').filter((k) => k.length > 2);
+    const nameKeywords = product.name
+      .split(' ')
+      .filter((k) => k.length > 2)
+      .slice(0, 3); // limit to 3 keywords max
 
-    // 1. Same Category AND same Brand
-    const tier1 = await this.productRepo.find({
-      where: {
-        category: { id: categoryId },
-        brand: brand,
-        id: Not(id),
-        is_active: true,
-      },
-      relations: ['category', 'images', 'variants'],
-      take: 4,
+    const qb = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.variants', 'variants')
+      .where('product.id != :id', { id })
+      .andWhere('product.is_active = true');
+
+    // Build priority score in a single SQL CASE expression
+    let scoreExpr = `(
+    CASE WHEN product.category_id = :categoryId AND product.brand = :brand THEN 40 ELSE 0 END
+    + CASE WHEN product.category_id = :categoryId THEN 20 ELSE 0 END
+    + CASE WHEN product.brand = :brand THEN 10 ELSE 0 END
+  `;
+
+    const params: Record<string, any> = { id, categoryId, brand };
+
+    // Add keyword scoring
+    nameKeywords.forEach((kw, i) => {
+      scoreExpr += ` + CASE WHEN product.name ILIKE :kw${i} THEN 5 ELSE 0 END`;
+      params[`kw${i}`] = `%${kw}%`;
     });
 
-    let results = [...tier1];
+    scoreExpr += `)`;
 
-    // 2. Same Category (different brand)
-    if (results.length < 4) {
-      const tier2 = await this.productRepo.find({
-        where: {
-          category: { id: categoryId },
-          id: Not(In([id, ...results.map((p) => p.id)])),
-          is_active: true,
-        },
-        relations: ['category', 'images', 'variants'],
-        take: 4 - results.length,
-      });
-      results = [...results, ...tier2];
-    }
-
-    // 3. Name similarity (using keywords)
-    if (results.length < 4 && nameKeywords.length > 0) {
-      for (const keyword of nameKeywords) {
-        if (results.length >= 4) break;
-        const tier3 = await this.productRepo.find({
-          where: {
-            name: ILike(`%${keyword}%`),
-            id: Not(In([id, ...results.map((p) => p.id)])),
-            is_active: true,
-          },
-          relations: ['category', 'images', 'variants'],
-          take: 4 - results.length,
-        });
-        results = [...results, ...tier3];
-      }
-    }
-
-    // 4. Same Brand (different category)
-    if (results.length < 4 && brand) {
-      const tier4 = await this.productRepo.find({
-        where: {
-          brand: brand,
-          id: Not(In([id, ...results.map((p) => p.id)])),
-          is_active: true,
-        },
-        relations: ['category', 'images', 'variants'],
-        take: 4 - results.length,
-      });
-      results = [...results, ...tier4];
-    }
-
-    // 5. Final Fallback: Newest Products
-    if (results.length < 4) {
-      const fallback = await this.productRepo.find({
-        where: {
-          id: Not(In([id, ...results.map((p) => p.id)])),
-          is_active: true,
-        },
-        relations: ['category', 'images', 'variants'],
-        take: 4 - results.length,
-        order: { created_at: 'DESC' },
-      });
-      results = [...results, ...fallback];
-    }
+    const results = await qb
+      .addSelect(scoreExpr, 'score')
+      .setParameters(params)
+      .orderBy('score', 'DESC')
+      .addOrderBy('product.created_at', 'DESC')
+      .limit(4)
+      .cache(cacheKey, 60000)
+      .getMany();
 
     return results;
   }

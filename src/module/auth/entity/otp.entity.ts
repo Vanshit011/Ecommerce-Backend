@@ -27,7 +27,7 @@ export class Otp extends BaseEntity {
   })
   expires_at: Date;
 
-  @Index()
+  @Index('idx_otp_user_id')
   @ManyToOne(() => User, (user) => user.otps, {
     nullable: false,
     onDelete: 'CASCADE',
