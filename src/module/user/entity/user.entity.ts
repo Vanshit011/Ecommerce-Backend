@@ -14,11 +14,11 @@ import { Coupon } from '../../../module/coupon/entity/coupon.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
-  @Index()
+  @Index('idx_users_name')
   @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
   name: string;
 
-  @Index()
+  @Index('idx_users_email')
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
@@ -34,7 +34,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   github_id: string;
 
-  @Index()
+  @Index('idx_users_role')
   @Column({
     type: 'enum',
     enum: UserRole,
