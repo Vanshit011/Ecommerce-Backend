@@ -23,7 +23,7 @@ export class Token extends BaseEntity {
   @Column({ type: 'timestamp' })
   expires_at: Date;
 
-  @Index()
+  @Index('idx_tokens_user_id')
   @ManyToOne(() => User, (user) => user.tokens, { onDelete: 'CASCADE' })
   user: User;
 }

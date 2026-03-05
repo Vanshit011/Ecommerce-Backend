@@ -4,10 +4,17 @@ import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
 
 @Entity('reviews')
-@Index(['product', 'created_at'], { where: 'deleted_at IS NULL' })
-@Index(['user', 'product'], { unique: true, where: 'deleted_at IS NULL' })
-@Index(['user'], { where: 'deleted_at IS NULL' })
-@Index(['product', 'rating'], { where: 'deleted_at IS NULL' })
+@Index('idx_reviews_product_created_at', ['product', 'created_at'], {
+  where: 'deleted_at IS NULL',
+})
+@Index('idx_reviews_user_product', ['user', 'product'], {
+  unique: true,
+  where: 'deleted_at IS NULL',
+})
+@Index('idx_reviews_user', ['user'], { where: 'deleted_at IS NULL' })
+@Index('idx_reviews_product_rating', ['product', 'rating'], {
+  where: 'deleted_at IS NULL',
+})
 export class Review extends BaseEntity {
   @Column({ type: 'int' })
   rating: number;

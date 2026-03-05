@@ -9,6 +9,7 @@ import { Otp } from './entity/otp.entity';
 import { TokenModule } from '../token/token.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
+import { RmqModule } from '../../core/rmq/rmq.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { GithubStrategy } from './strategies/github.strategy';
     UsersModule,
     MailModule,
     TokenModule,
+    RmqModule.register({ name: 'MAIL_SERVICE' }),
   ],
   controllers: [AuthController],
   providers: [AuthService, GoogleStrategy, GithubStrategy],

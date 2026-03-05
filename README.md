@@ -96,3 +96,45 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## Model Context Protocol (MCP)
+
+This project includes an MCP server to allow AI models to interact with the database and services.
+
+### Running the MCP Server
+
+```bash
+$ npm run mcp:start
+```
+
+### Configuration for Claude Desktop
+
+Add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ecommerce-backend": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "ts-node",
+        "-C",
+        "tsc",
+        "d:/HP Data/solguruz/Ecommerce-Backend/src/mcp-server.ts"
+      ],
+      "env": {
+        "NODE_ENV": "development",
+        "DB_HOST": "your_host",
+        "DB_PORT": "5432",
+        "DB_USERNAME": "your_user",
+        "DB_PASSWORD": "your_password",
+        "DB_NAME": "your_db"
+      }
+    }
+  }
+}
+```
+
+> [!NOTE]
+> Make sure to update the environment variables and paths in the config above to match your local setup.

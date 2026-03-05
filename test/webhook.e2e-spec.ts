@@ -148,7 +148,7 @@ describe('WebhookController (e2e)', () => {
             metadata: {
               order_id: orderId,
             },
-          } as Stripe.PaymentIntent,
+          } as any as Stripe.PaymentIntent,
         },
       };
 
@@ -173,7 +173,7 @@ describe('WebhookController (e2e)', () => {
             metadata: {
               order_id: orderId,
             },
-          } as Stripe.PaymentIntent,
+          } as any as Stripe.PaymentIntent,
         },
       };
 

@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
@@ -26,6 +31,7 @@ import { SeederModule } from './seeder/seeder.module';
 import { ErrorLoggingInterceptor } from './core/interceptor/error-logging.interceptor';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './core/redis/redis.module';
+import { RmqModule } from './core/rmq/rmq.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
@@ -33,15 +39,20 @@ import { DashboardModule } from './module/dashboard/dashboard.module';
 import { ReviewModule } from './module/review/review.module';
 import { CouponModule } from './module/coupon/coupon.module';
 import { AiModule } from './module/ai/ai.module';
+import { LoggerMiddleware } from './core/middleware/logger.middleware';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      store: redisStore,
-      host: 'localhost',
-      port: 6379,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        store: redisStore,
+        host: configService.get<string>('REDIS_HOST'),
+        port: configService.get<number>('REDIS_PORT'),
+      }),
     }),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -76,6 +87,7 @@ import { AiModule } from './module/ai/ai.module';
     ReviewModule,
     CouponModule,
     AiModule,
+    RmqModule,
     ThrottlerModule.forRoot(throttlerConfig),
   ],
   controllers: [AppController],
@@ -91,4 +103,10 @@ import { AiModule } from './module/ai/ai.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

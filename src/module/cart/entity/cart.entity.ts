@@ -5,14 +5,14 @@ import { ProductVariant } from '../../product/entity/product-variant.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('cart_items')
-@Index(['user', 'product', 'variant_id'])
+@Index('idx_cart_items_user_product_variant', ['user', 'product', 'variant_id'])
 export class CartItem extends BaseEntity {
-  @Index()
+  @Index('idx_cart_items_user_id')
   @ManyToOne(() => User, (user) => user.cart_items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Index()
+  @Index('idx_cart_items_product_id')
   @ManyToOne(() => Product, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;

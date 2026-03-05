@@ -3,9 +3,9 @@ import { Product } from './product.entity';
 import { BaseEntity } from '../../../shared/entities/base.entity';
 
 @Entity('product_images')
-@Index(['product', 'is_main'])
+@Index('idx_product_images_product_is_main', ['product', 'is_main'])
 export class ProductImage extends BaseEntity {
-  @Index()
+  @Index('idx_product_images_product_id')
   @ManyToOne(() => Product, (p) => p.images, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;

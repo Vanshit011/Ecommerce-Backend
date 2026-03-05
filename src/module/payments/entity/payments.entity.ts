@@ -5,12 +5,12 @@ import { User } from '../../user/entity/user.entity';
 
 @Entity({ name: 'payments' })
 export class Payment extends BaseEntity {
-  @Index()
+  @Index('idx_payments_user_id')
   @ManyToOne(() => User, (user) => user.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Index()
+  @Index('idx_payments_order_id')
   @ManyToOne(() => Order, (order) => order.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
   order: Order;

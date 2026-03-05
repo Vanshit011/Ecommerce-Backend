@@ -13,7 +13,7 @@ import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
 
 @Entity('coupons')
-@Index(['code', 'is_active'], { unique: true })
+@Index('idx_coupons_code_is_active', ['code', 'is_active'], { unique: true })
 export class Coupon extends BaseEntity {
   @Column({ type: 'varchar', length: 50 })
   code: string;
@@ -49,7 +49,7 @@ export class Coupon extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Index()
+  @Index('idx_coupons_user_id')
   @ManyToOne(() => User, (user) => user.coupons, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user: User;

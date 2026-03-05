@@ -4,7 +4,7 @@ import { User } from '../../user/entity/user.entity';
 import { Product } from '../../product/entity/product.entity';
 
 @Entity('favorites')
-@Index(['user', 'product'])
+@Index('idx_favorites_user_product', ['user', 'product'])
 export class Favorite extends BaseEntity {
   @ManyToOne(() => User, (user) => user.favorites, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
