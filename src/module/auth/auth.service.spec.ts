@@ -50,6 +50,12 @@ describe('AuthService', () => {
             insert: jest.fn(),
           },
         },
+        {
+          provide: 'MAIL_SERVICE',
+          useValue: {
+            emit: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

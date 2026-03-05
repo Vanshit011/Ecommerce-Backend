@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx jest --coverage --collectCoverageFrom=\"src/module/address/address.controller.ts\" --collectCoverageFrom=\"src/module/auth/auth.controller.ts\" --collectCoverageFrom=\"src/module/cart/cart.controller.ts\" --collectCoverageFrom=\"src/module/categories/categories.controller.ts\" --collectCoverageFrom=\"src/module/coupon/coupon.service.ts\" --collectCoverageFrom=\"src/module/favorite/favorite.controller.ts\" --collectCoverageFrom=\"src/module/order/order.controller.ts\" --collectCoverageFrom=\"src/module/product/product.controller.ts\" --collectCoverageFrom=\"src/module/profile/profile.service.ts\" src/module/address/address.controller.spec.ts src/module/auth/auth.controller.spec.ts src/module/cart/cart.controller.spec.ts src/module/categories/categories.controller.spec.ts src/module/coupon/coupon.service.spec.ts src/module/favorite/favorite.controller.spec.ts src/module/order/order.controller.spec.ts src/module/product/product.controller.spec.ts src/module/profile/profile.service.spec.ts --no-cache)"
+    ]
+  }
+}
