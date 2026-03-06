@@ -1,0 +1,111 @@
+services:
+  # 1. PostgreSQL Database
+  - type: pgo
+    name: ecommerce-db
+    plan: free
+    postgresMajorVersion: 15
+
+  # 2. Redis Cache
+  - type: redis
+    name: ecommerce-redis
+    plan: free
+    ipAllowList: [] # Allow all internal connections
+
+  # Note: Render does not natively provide RabbitMQ.
+  # You should use a free managed RabbitMQ provider like CloudAMQP
+  # and set the RABBITMQ_URL environment variable in the Render Dashboard.
+
+  # 4. Backend Web Service
+  - type: web
+    name: ecommerce-backend-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+
+      # Database Connections (Auto-linked)
+      - key: DB_HOST
+        fromDatabase:
+          name: ecommerce-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecommerce-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: ecommerce-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ecommerce-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: ecommerce-db
+          property: database
+
+      # Redis Connection (Auto-linked)
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: ecommerce-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: ecommerce-redis
+          property: port
+
+      # Other Environment Variables (You will need to fill out sensitive ones in the Dashboard)
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USER
+        value: vanshitt@solguruz.com
+      - key: MAIL_PASS
+        sync: false
+      - key: CLOUDINARY_NAME
+        value: dqxuflngi
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: https://ecommerce-backend-api.onrender.com/auth/google/callback
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL
+        value: https://ecommerce-backend-api.onrender.com/auth/github/callback
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false # Set this up via CloudAMQP
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASS
+        sync: false
